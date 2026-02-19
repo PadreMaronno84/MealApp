@@ -18,5 +18,11 @@ data/
 *.sqlite
 *.db
 
+# storage
+storage/users.json
+storage/uploads/
+storage/saved/
+storage/settings/
+
 # env
 .env
