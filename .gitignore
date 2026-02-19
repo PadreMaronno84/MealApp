@@ -1,0 +1,22 @@
+# mac/windows
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# node (se mai)
+node_modules/
+
+# log
+*.log
+
+# dati locali / salvati (IMPORTANTISSIMO)
+saved/
+data/
+*.sqlite
+*.db
+
+# env
+.env
