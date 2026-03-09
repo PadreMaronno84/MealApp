@@ -347,6 +347,6 @@
     </div>
   </section>
 
-  <script src="api/app.js?v=<?php echo time(); ?>"></script>
+  <script src="assets/app.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

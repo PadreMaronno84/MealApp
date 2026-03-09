@@ -316,7 +316,6 @@ async function login(){
   await boot();
 }
 
-
 async function logout(){
   loading(true, "Logout", "Chiudo sessione…");
   await apiGet("api/logout.php");
@@ -1026,43 +1025,56 @@ function renderPlan(){
 /* =========================
    BOOT
    ========================= */
-async function boot(){
-  const me = await refreshMe();
-
-  show($("loginSection"), !me);
-  show($("appSection"), !!me);
-
-  if(!me) return;
-
-  const whoText = `${me.username} • ${me.role} • gruppo: ${me.group}`;
-  if($("whoami")) $("whoami").textContent = whoText;
-  if($("whoamiDesktop")) $("whoamiDesktop").textContent = whoText;
-  if($("whoamiMobile")) $("whoamiMobile").textContent = whoText;
-
-  const isAdmin = me.role === "admin";
-  show($("adminUpload"), isAdmin);
-  show($("adminUploadMobile"), isAdmin);
-  show($("adminControls"), isAdmin);
-
-  if(isAdmin && $("startMonday")){
-    const now = new Date();
-    const day = now.getDay(); // 0=dom
-    const diffToMon = (day===0) ? 1 : (8 - day);
-    const nextMon = addDays(now, diffToMon);
-    $("startMonday").value = fmtISO(nextMon);
+   async function boot(){
+    let me = null;
+  
+    try{
+      me = await refreshMe();
+    }catch(err){
+      console.error("refreshMe failed", err);
+    }
+  
+    show($("loginSection"), !me);
+    show($("appSection"), !!me);
+    if(!me) return;
+  
+    const whoText = `${me.username} • ${me.role} • gruppo: ${me.group}`;
+    if($("whoami")) $("whoami").textContent = whoText;
+    if($("whoamiDesktop")) $("whoamiDesktop").textContent = whoText;
+    if($("whoamiMobile")) $("whoamiMobile").textContent = whoText;
+  
+    const isAdmin = me.role === "admin";
+    show($("adminUpload"), isAdmin);
+    show($("adminUploadMobile"), isAdmin);
+    show($("adminControls"), isAdmin);
+  
+    if(isAdmin && $("startMonday")){
+      const now = new Date();
+      const day = now.getDay(); // 0=dom
+      const diffToMon = (day===0) ? 1 : (8 - day);
+      const nextMon = addDays(now, diffToMon);
+      $("startMonday").value = fmtISO(nextMon);
+    }
+  
+    loading(true, "Avvio", "Carico dati…");
+  
+    try{
+      // queste chiamate a volte falliscono (404 / JSON non valido / permessi)
+      await loadSettings();
+      await loadPairs();
+      await loadSaved();
+      if(isAdmin) await loadGroupUsers();
+    }catch(err){
+      console.error("BOOT load failed:", err);
+      toast("err", "Errore avvio: " + (err?.message || err));
+    }finally{
+      loading(false); // <— questa è la parte che ti sblocca per sempre
+    }
+  
+    setView(state.view || "plans");
+    renderSettings();
+    renderPlan();
   }
-
-  loading(true, "Avvio", "Carico dati…");
-  await loadSettings();
-  await loadPairs();
-  await loadSaved();
-  if(isAdmin) await loadGroupUsers();
-  loading(false);
-
-  setView(state.view || "plans");
-  renderSettings();
-  renderPlan();
-}
 
 /* =========================
    EVENTS
