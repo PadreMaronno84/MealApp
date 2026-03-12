@@ -1948,8 +1948,21 @@ async function selectGroup(groupName){
   const j = await apiPost("api/set_active_group.php", {group: groupName});
   loading(false);
   if(!j.ok){ toast("err", j.error || "Errore selezione gruppo"); return; }
-  // Reboot nel contesto del gruppo selezionato
-  state.plan = null; state.saved = []; state.pool = []; state.dirty = false;
+
+  // Reset completo di tutto lo stato del gruppo precedente
+  state.plan = null; state.saved = []; state.pool = []; state.settings = null; state.dirty = false;
+
+  // Chiudi e svuota tutti gli accordion con dati lazy-loaded (log, stats, utenti)
+  // così al prossimo open ricaricano i dati del nuovo gruppo
+  const resetAccordion = (bodyId, iconId) => {
+    const body = $(bodyId), icon = $(iconId);
+    if(body){ body.classList.add("hidden"); body.innerHTML = ""; }
+    if(icon) icon.classList.remove("rotate-180");
+  };
+  resetAccordion("statsBody",  "statsIcon");
+  resetAccordion("logBody",    "logIcon");
+  resetAccordion("adminUsers", "usersAccordionIcon");
+
   await boot();
 }
 
