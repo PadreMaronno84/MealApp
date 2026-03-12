@@ -867,12 +867,12 @@ function applyAlwaysOnRules(dayIndex, dayObj){
   const freeDays  = Array.isArray(free.days)  ? free.days  : (Number.isFinite(free.dayIndex)  ? [free.dayIndex]  : []);
 
   if(pizza.enabled && pizzaDays.includes(dayIndex)){
-    if(pizza.meal === “lunch”) dayObj.lunch = pizza.text || “Pizza”;
-    else dayObj.dinner = pizza.text || “Pizza”;
+    if(pizza.meal === "lunch") dayObj.lunch = pizza.text || "Pizza";
+    else dayObj.dinner = pizza.text || "Pizza";
   }
   if(free.enabled && freeDays.includes(dayIndex)){
-    if(free.meal === “lunch”) dayObj.lunch = free.text || “LIBERO”;
-    else dayObj.dinner = free.text || “LIBERO”;
+    if(free.meal === "lunch") dayObj.lunch = free.text || "LIBERO";
+    else dayObj.dinner = free.text || "LIBERO";
   }
 }
 
