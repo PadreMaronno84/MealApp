@@ -485,7 +485,7 @@
                 <button id="btnSaveSettings" class="hidden rounded-2xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity shrink-0">Salva</button>
               </div>
 
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Pizza -->
                 <div class="rounded-3xl border border-line bg-surface/60 p-4">
                   <div class="flex items-center justify-between mb-3">
@@ -498,29 +498,36 @@
                       <span class="text-xs text-muted">Attiva</span>
                     </label>
                   </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div class="space-y-3">
                     <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Giorno</div>
-                      <select id="pizzaDay" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
-                        <option value="0">Lun</option><option value="1">Mar</option><option value="2">Mer</option>
-                        <option value="3">Gio</option><option value="4">Ven</option><option value="5">Sab</option><option value="6">Dom</option>
-                      </select>
+                      <div class="text-xs text-muted mb-1.5 font-medium">Giorni</div>
+                      <div class="flex flex-wrap gap-1">
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck0" class="accent-ink w-3 h-3"><span>Lun</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck1" class="accent-ink w-3 h-3"><span>Mar</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck2" class="accent-ink w-3 h-3"><span>Mer</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck3" class="accent-ink w-3 h-3"><span>Gio</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck4" class="accent-ink w-3 h-3"><span>Ven</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck5" class="accent-ink w-3 h-3"><span>Sab</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="pizzaDayCheck6" class="accent-ink w-3 h-3"><span>Dom</span></label>
+                      </div>
                     </div>
-                    <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Pasto</div>
-                      <select id="pizzaMeal" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
-                        <option value="dinner">Cena</option>
-                        <option value="lunch">Pranzo</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Testo</div>
-                      <input id="pizzaText" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40" placeholder="Pizza…"/>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <div class="text-xs text-muted mb-1 font-medium">Pasto</div>
+                        <select id="pizzaMeal" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
+                          <option value="dinner">Cena</option>
+                          <option value="lunch">Pranzo</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div class="text-xs text-muted mb-1 font-medium">Testo</div>
+                        <input id="pizzaText" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40" placeholder="Pizza…"/>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Libero -->
+                <!-- Pasto Libero -->
                 <div class="rounded-3xl border border-line bg-surface/60 p-4">
                   <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
@@ -532,25 +539,49 @@
                       <span class="text-xs text-muted">Attiva</span>
                     </label>
                   </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div class="space-y-3">
                     <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Giorno</div>
-                      <select id="freeDay" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
-                        <option value="0">Lun</option><option value="1">Mar</option><option value="2">Mer</option>
-                        <option value="3">Gio</option><option value="4">Ven</option><option value="5">Sab</option><option value="6">Dom</option>
-                      </select>
+                      <div class="text-xs text-muted mb-1.5 font-medium">Giorni</div>
+                      <div class="flex flex-wrap gap-1">
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck0" class="accent-ink w-3 h-3"><span>Lun</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck1" class="accent-ink w-3 h-3"><span>Mar</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck2" class="accent-ink w-3 h-3"><span>Mer</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck3" class="accent-ink w-3 h-3"><span>Gio</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck4" class="accent-ink w-3 h-3"><span>Ven</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck5" class="accent-ink w-3 h-3"><span>Sab</span></label>
+                        <label class="flex items-center gap-1 text-xs rounded-xl border border-line px-2 py-1 cursor-pointer bg-white hover:bg-surface transition-colors"><input type="checkbox" id="freeDayCheck6" class="accent-ink w-3 h-3"><span>Dom</span></label>
+                      </div>
                     </div>
-                    <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Pasto</div>
-                      <select id="freeMeal" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
-                        <option value="lunch">Pranzo</option>
-                        <option value="dinner">Cena</option>
-                      </select>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <div class="text-xs text-muted mb-1 font-medium">Pasto</div>
+                        <select id="freeMeal" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40">
+                          <option value="lunch">Pranzo</option>
+                          <option value="dinner">Cena</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div class="text-xs text-muted mb-1 font-medium">Testo</div>
+                        <input id="freeText" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40" placeholder="LIBERO"/>
+                      </div>
                     </div>
-                    <div>
-                      <div class="text-xs text-muted mb-1 font-medium">Testo</div>
-                      <input id="freeText" class="w-full rounded-2xl border border-line px-3 py-2 text-sm bg-white text-ink outline-none focus:ring-2 focus:ring-accent/40" placeholder="LIBERO"/>
+                  </div>
+                </div>
+
+                <!-- Filtro Stagionale -->
+                <div class="rounded-3xl border border-line bg-surface/60 p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span>🌱</span>
+                      <div class="text-sm font-semibold text-ink">Filtro Stagionale</div>
                     </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input id="seasonEnabled" type="checkbox" class="scale-110 accent-ink">
+                      <span class="text-xs text-muted">Attiva</span>
+                    </label>
+                  </div>
+                  <div class="text-xs text-muted leading-relaxed">
+                    Quando attivo, nella generazione del piano vengono usate preferibilmente le coppie della stagione corrente (PRI/EST/AUT/INV). Se nessuna coppia stagionale è disponibile si usa tutto il pool come fallback.
                   </div>
                 </div>
               </div>

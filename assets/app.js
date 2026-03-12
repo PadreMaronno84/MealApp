@@ -471,15 +471,28 @@ async function register(){
 function defaultSettings(){
   return {
     rules: {
-      pizza: { enabled:true, dayIndex:5, meal:"dinner", text:"Pizza" },
-      freeMeal: { enabled:true, dayIndex:6, meal:"lunch", text:"LIBERO" }
+      pizza:    { enabled:true, days:[5], meal:"dinner", text:"Pizza" },
+      freeMeal: { enabled:true, days:[6], meal:"lunch",  text:"LIBERO" },
+      season:   { enabled:true }
     }
   };
 }
 async function loadSettings(){
   const j = await apiGet("api/settings_get.php");
-  if(j.ok && j.settings) state.settings = j.settings;
-  else state.settings = defaultSettings();
+  if(j.ok && j.settings){
+    const s = j.settings;
+    // backward compat: migra dayIndex -> days
+    ["pizza","freeMeal"].forEach(k=>{
+      const r = s.rules?.[k];
+      if(r && !Array.isArray(r.days)){
+        r.days = Number.isFinite(r.dayIndex) ? [r.dayIndex] : [];
+      }
+    });
+    if(!s.rules?.season) (s.rules = s.rules||{}).season = { enabled:true };
+    state.settings = s;
+  } else {
+    state.settings = defaultSettings();
+  }
 }
 function getSettings(){
   return state.settings || defaultSettings();
@@ -489,13 +502,25 @@ function rulesSummaryText(){
   const r = s.rules || {};
   const p = r.pizza || {};
   const f = r.freeMeal || {};
+  const season = r.season || {};
 
   const parts = [];
-  if(p.enabled) parts.push(`🍕 Pizza: ${DOW[p.dayIndex] || "?"} (${p.meal==="lunch"?"pranzo":"cena"}) → ${p.text||"Pizza"}`);
-  else parts.push(`🍕 Pizza: disattivata`);
 
-  if(f.enabled) parts.push(`🟡 Libero: ${DOW[f.dayIndex] || "?"} (${f.meal==="lunch"?"pranzo":"cena"}) → ${f.text||"LIBERO"}`);
-  else parts.push(`🟡 Libero: disattivato`);
+  if(p.enabled){
+    const dayNames = (p.days||[]).map(d=>DOW[d]||"?").join(", ") || "?";
+    parts.push(`🍕 Pizza: ${dayNames} (${p.meal==="lunch"?"pranzo":"cena"}) → ${p.text||"Pizza"}`);
+  } else {
+    parts.push(`🍕 Pizza: disattivata`);
+  }
+
+  if(f.enabled){
+    const dayNames = (f.days||[]).map(d=>DOW[d]||"?").join(", ") || "?";
+    parts.push(`🌿 Pasto Libero: ${dayNames} (${f.meal==="lunch"?"pranzo":"cena"}) → ${f.text||"LIBERO"}`);
+  } else {
+    parts.push(`🌿 Pasto Libero: disattivato`);
+  }
+
+  parts.push(`🌱 Filtro stagionale: ${season.enabled !== false ? "attivo" : "disattivato"}`);
 
   return parts.join("\n");
 }
@@ -504,21 +529,31 @@ function renderSettings(){
   const r = s.rules || {};
   const pizza = r.pizza || {};
   const free = r.freeMeal || {};
+  const season = r.season || {};
 
   const isAdmin = isAdminOrAbove();
 
+  // Pizza
   if($("pizzaEnabled")) $("pizzaEnabled").checked = !!pizza.enabled;
-  if($("pizzaDay")) $("pizzaDay").value = String(Number.isFinite(pizza.dayIndex)?pizza.dayIndex:5);
+  const pizzaDays = Array.isArray(pizza.days) ? pizza.days : (Number.isFinite(pizza.dayIndex) ? [pizza.dayIndex] : [5]);
+  for(let i=0;i<7;i++){ const cb=$(`pizzaDayCheck${i}`); if(cb) cb.checked = pizzaDays.includes(i); }
   if($("pizzaMeal")) $("pizzaMeal").value = (pizza.meal === "lunch") ? "lunch" : "dinner";
   if($("pizzaText")) $("pizzaText").value = pizza.text ?? "Pizza";
 
+  // FreeMeal
   if($("freeEnabled")) $("freeEnabled").checked = !!free.enabled;
-  if($("freeDay")) $("freeDay").value = String(Number.isFinite(free.dayIndex)?free.dayIndex:6);
+  const freeDays = Array.isArray(free.days) ? free.days : (Number.isFinite(free.dayIndex) ? [free.dayIndex] : [6]);
+  for(let i=0;i<7;i++){ const cb=$(`freeDayCheck${i}`); if(cb) cb.checked = freeDays.includes(i); }
   if($("freeMeal")) $("freeMeal").value = (free.meal === "dinner") ? "dinner" : "lunch";
   if($("freeText")) $("freeText").value = free.text ?? "LIBERO";
 
+  // Season
+  if($("seasonEnabled")) $("seasonEnabled").checked = (season.enabled !== false);
+
   const lock = !isAdmin;
-  ["pizzaEnabled","pizzaDay","pizzaMeal","pizzaText","freeEnabled","freeDay","freeMeal","freeText"].forEach(id=>{
+  const allCtrlIds = ["pizzaEnabled","pizzaMeal","pizzaText","freeEnabled","freeMeal","freeText","seasonEnabled"];
+  for(let i=0;i<7;i++){ allCtrlIds.push(`pizzaDayCheck${i}`, `freeDayCheck${i}`); }
+  allCtrlIds.forEach(id=>{
     const el = $(id);
     if(!el) return;
     el.disabled = lock;
@@ -557,25 +592,27 @@ async function saveSettings(){
   const s = getSettings();
   s.rules = s.rules || {};
 
+  const pizzaDays = [];
+  for(let i=0;i<7;i++){ if($(`pizzaDayCheck${i}`)?.checked) pizzaDays.push(i); }
   s.rules.pizza = {
     enabled: !!$("pizzaEnabled")?.checked,
-    dayIndex: parseInt($("pizzaDay")?.value ?? "5", 10),
+    days: pizzaDays,
     meal: ($("pizzaMeal")?.value === "lunch") ? "lunch" : "dinner",
     text: ($("pizzaText")?.value || "").trim() || "Pizza"
   };
 
+  const freeDays = [];
+  for(let i=0;i<7;i++){ if($(`freeDayCheck${i}`)?.checked) freeDays.push(i); }
   s.rules.freeMeal = {
     enabled: !!$("freeEnabled")?.checked,
-    dayIndex: parseInt($("freeDay")?.value ?? "6", 10),
+    days: freeDays,
     meal: ($("freeMeal")?.value === "dinner") ? "dinner" : "lunch",
     text: ($("freeText")?.value || "").trim() || "LIBERO"
   };
 
-  ["pizza","freeMeal"].forEach(k=>{
-    const rr = s.rules[k];
-    rr.dayIndex = Math.max(0, Math.min(6, parseInt(rr.dayIndex,10)||0));
-    rr.meal = (rr.meal === "lunch") ? "lunch" : "dinner";
-  });
+  s.rules.season = {
+    enabled: !!$("seasonEnabled")?.checked
+  };
 
   // invite_code: preserva quello in state (non editabile dal form)
   s.invite_code = state.settings?.invite_code || "";
@@ -670,7 +707,14 @@ function updateSeasonNote(){
   const total = state.pool ? state.pool.length : 0;
   if(!total){ el.textContent = ''; return; }
 
+  const useSeasonFilter = getSettings().rules?.season?.enabled !== false;
   const season = getCurrentSeason(new Date());
+
+  if(!useSeasonFilter){
+    el.textContent = `Stagione: ${SEASON_NAMES[season]} — filtro stagionale disattivato, uso tutto il pool (${total} coppie)`;
+    return;
+  }
+
   const seasonPool = filterPoolBySeason(state.pool, season);
   const hasSeasonData = state.pool.some(p => p.season);
   const isFallback = hasSeasonData && seasonPool.length === total;
@@ -814,22 +858,21 @@ async function deleteUser(username){
    ========================= */
 
 function applyAlwaysOnRules(dayIndex, dayObj){
-  // regole dal settings (per gruppo)
   const s = getSettings();
   const r = (s.rules || {});
   const pizza = r.pizza || {};
   const free = r.freeMeal || {};
 
-  // IMPORTANTISSIMO: non devono uscire “pizza/libero” fuori dai giorni impostati
-  // quindi li applichiamo SOLO nel dayIndex impostato e SOLO sul pasto impostato.
+  const pizzaDays = Array.isArray(pizza.days) ? pizza.days : (Number.isFinite(pizza.dayIndex) ? [pizza.dayIndex] : []);
+  const freeDays  = Array.isArray(free.days)  ? free.days  : (Number.isFinite(free.dayIndex)  ? [free.dayIndex]  : []);
 
-  if(pizza.enabled && Number(pizza.dayIndex) === dayIndex){
-    if(pizza.meal === "lunch") dayObj.lunch = pizza.text || "Pizza";
-    else dayObj.dinner = pizza.text || "Pizza";
+  if(pizza.enabled && pizzaDays.includes(dayIndex)){
+    if(pizza.meal === “lunch”) dayObj.lunch = pizza.text || “Pizza”;
+    else dayObj.dinner = pizza.text || “Pizza”;
   }
-  if(free.enabled && Number(free.dayIndex) === dayIndex){
-    if(free.meal === "lunch") dayObj.lunch = free.text || "LIBERO";
-    else dayObj.dinner = free.text || "LIBERO";
+  if(free.enabled && freeDays.includes(dayIndex)){
+    if(free.meal === “lunch”) dayObj.lunch = free.text || “LIBERO”;
+    else dayObj.dinner = free.text || “LIBERO”;
   }
 }
 
@@ -850,10 +893,11 @@ function generatePlan(){
 
   loading(true, "Genero", "Creo la settimana…");
 
-  // Filtra per stagione
+  // Filtro stagionale: rispetta la regola season nelle impostazioni
   const season = getCurrentSeason(startMonday);
-  const seasonPool = filterPoolBySeason(state.pool, season);
-  const isFallback = seasonPool.length === state.pool.length && state.pool.some(p => p.season);
+  const useSeasonFilter = getSettings().rules?.season?.enabled !== false;
+  const seasonPool = useSeasonFilter ? filterPoolBySeason(state.pool, season) : state.pool;
+  const isFallback = useSeasonFilter && (seasonPool.length === state.pool.length && state.pool.some(p => p.season));
 
   // Deck shufflato ciclico: evita ripetizioni consecutive
   let deck = shuffleArray(seasonPool);
@@ -891,7 +935,9 @@ function generatePlan(){
   state.dirty = true;
   state.activeWeek = 0;
   renderPlan();
-  const seasonInfo = `${SEASON_NAMES[season]} — ${seasonPool.length} coppie${isFallback ? ' (fallback: pool completo)' : ''}`;
+  const seasonInfo = useSeasonFilter
+    ? `${SEASON_NAMES[season]} — ${seasonPool.length} coppie${isFallback ? ' (fallback: pool completo)' : ''}`
+    : `stagione disattivata — ${seasonPool.length} coppie totali`;
   if($("status")) $("status").textContent = `Generato. ${seasonInfo}`;
   loading(false);
   toast("ok","Piano generato");
