@@ -13,8 +13,9 @@ $lines = preg_split("/\r\n|\n|\r/", $raw);
 if (!$lines || count($lines) < 2) json_out(['ok'=>true, 'exists'=>true, 'pairs'=>[]]);
 
 $header = str_getcsv($lines[0]);
-$idxLunch  = array_search('lunch', $header, true);
-$idxDinner = array_search('dinner', $header, true);
+$idxLunch   = array_search('lunch',  $header, true);
+$idxDinner  = array_search('dinner', $header, true);
+$idxSeason  = array_search('season', $header, true);
 
 if ($idxLunch === false || $idxDinner === false) {
   json_out(['ok'=>false,'error'=>'csv_headers_need_lunch_dinner'], 400);
@@ -25,10 +26,11 @@ for ($i=1; $i<count($lines); $i++){
   $line = trim($lines[$i]);
   if ($line === '') continue;
   $cols = str_getcsv($line);
-  $l = trim((string)($cols[$idxLunch] ?? ''));
+  $l = trim((string)($cols[$idxLunch]  ?? ''));
   $d = trim((string)($cols[$idxDinner] ?? ''));
   if ($l === '' && $d === '') continue;
-  $pairs[] = ['lunch'=>$l, 'dinner'=>$d];
+  $s = $idxSeason !== false ? strtoupper(trim((string)($cols[$idxSeason] ?? ''))) : '';
+  $pairs[] = ['lunch'=>$l, 'dinner'=>$d, 'season'=>$s];
 }
 
 json_out(['ok'=>true, 'exists'=>true, 'pairs'=>$pairs]);

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/common.php';
 require_admin();
+verify_csrf();
 
 $data = read_json_body();
 $id = safe_name((string)($data['id'] ?? ''));

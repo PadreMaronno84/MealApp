@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/common.php';
 $me = require_admin();
+verify_csrf();
 
 $data = read_json_body();
 $target = normalize_username((string)($data['username'] ?? ''));
@@ -45,4 +46,5 @@ foreach ($new as $u) {
 if ($adminsLeft < 1) json_out(['ok'=>false,'error'=>'must_keep_one_admin'], 400);
 
 save_users($new);
+log_activity($group, $me['username'], 'utente_eliminato', ['username' => $target]);
 json_out(['ok'=>true]);

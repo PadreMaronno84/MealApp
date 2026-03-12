@@ -11,5 +11,6 @@ json_out([
     'username'=>$u['username'],
     'role'=>$u['role'],
     'group'=>$u['group']
-  ]
+  ],
+  'csrf_token' => ensure_csrf_token()
 ]);

@@ -1,67 +1,38 @@
 <?php
-session_start();
-header('Content-Type: application/json; charset=utf-8');
+require __DIR__ . '/common.php';
 
-function current_user() {
-  $candidates = ['user', 'auth_user', 'mealapp_user'];
-  foreach ($candidates as $k) {
-    if (isset($_SESSION[$k]) && is_array($_SESSION[$k])) return $_SESSION[$k];
-  }
-  return null;
-}
+$me = require_login();
+$group = safe_name((string)($me['group'] ?? ''));
+if ($group === '') json_out(['ok'=>false,'error'=>'missing_group']);
 
-$u = current_user();
-if (!$u) {
-  echo json_encode(['ok'=>true,'logged'=>false]);
-  exit;
-}
-
-$group = $u['group'] ?? null;
-if (!$group) {
-  echo json_encode(['ok'=>false,'error'=>'missing_group']);
-  exit;
-}
-
-$baseDir = realpath(__DIR__ . '/../data/settings');
-if (!$baseDir) {
-  @mkdir(__DIR__ . '/../data/settings', 0777, true);
-  $baseDir = realpath(__DIR__ . '/../data/settings');
-}
-$path = $baseDir . DIRECTORY_SEPARATOR . $group . '.json';
+$dir = storage_base() . '/settings';
+if (!is_dir($dir)) @mkdir($dir, 0775, true);
+$path = $dir . '/' . $group . '.json';
 
 $default = [
   'version' => 1,
   'rules' => [
-    'pizza' => [
-      'enabled' => true,
-      'dayIndex' => 5,
-      'meal' => 'dinner',
-      'text' => 'Pizza, insalata mista'
-    ],
-    'freeMeal' => [
-      'enabled' => true,
-      'dayIndex' => 6,
-      'meal' => 'lunch',
-      'text' => 'LIBERO'
-    ],
-  ]
+    'pizza'    => ['enabled'=>true,  'dayIndex'=>5, 'meal'=>'dinner', 'text'=>'Pizza, insalata mista'],
+    'freeMeal' => ['enabled'=>true,  'dayIndex'=>6, 'meal'=>'lunch',  'text'=>'LIBERO'],
+  ],
+  'invite_code' => strtoupper(bin2hex(random_bytes(4)))
 ];
 
-if (!file_exists($path)) {
-  echo json_encode(['ok'=>true,'logged'=>true,'settings'=>$default]);
-  exit;
+if (!is_file($path)) {
+  file_put_contents($path, json_encode($default, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
+  json_out(['ok'=>true, 'settings'=>$default]);
 }
 
 $raw = @file_get_contents($path);
-if ($raw === false) {
-  echo json_encode(['ok'=>false,'error'=>'read_failed']);
-  exit;
-}
+if ($raw === false) json_out(['ok'=>false,'error'=>'read_failed']);
 
 $data = json_decode($raw, true);
-if (!is_array($data)) {
-  echo json_encode(['ok'=>true,'logged'=>true,'settings'=>$default,'warning'=>'invalid_json_reset_default']);
-  exit;
+if (!is_array($data)) json_out(['ok'=>true,'settings'=>$default,'warning'=>'invalid_json_reset_default']);
+
+// Auto-genera invite_code se mancante
+if (empty($data['invite_code'])) {
+  $data['invite_code'] = strtoupper(bin2hex(random_bytes(4)));
+  file_put_contents($path, json_encode($data, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
 }
 
-echo json_encode(['ok'=>true,'logged'=>true,'settings'=>$data]);
+json_out(['ok'=>true,'settings'=>$data]);

@@ -3,42 +3,39 @@ const $ = (id)=>document.getElementById(id);
 /* =========================
    API
    ========================= */
+function handleSessionExpired(){
+  // Mostra messaggio e ricarica la pagina (tornerà al login)
+  const wrap = $("loading");
+  if(wrap){
+    $("loadingTitle").textContent = "Sessione scaduta";
+    $("loadingMsg").textContent   = "Stai per essere reindirizzato al login…";
+    wrap.classList.remove("hidden");
+  }
+  setTimeout(()=>{ window.location.reload(); }, 1500);
+}
+
 async function apiGet(url){
   const r = await fetch(url, {cache:"no-store"});
   const j = await r.json().catch(()=>null);
   if(!j) throw new Error("bad_json");
+  if(j.error === "not_logged"){ handleSessionExpired(); throw new Error("not_logged"); }
   return j;
 }
 async function apiPost(url, body){
   const r = await fetch(url, {
     method:"POST",
-    headers: {"Content-Type":"application/json"},
+    headers: {
+      "Content-Type":"application/json",
+      "X-CSRF-Token": state.csrfToken
+    },
     body: JSON.stringify(body)
   });
   const j = await r.json().catch(()=>null);
   if(!j) throw new Error("bad_json");
+  if(j.error === "not_logged"){ handleSessionExpired(); throw new Error("not_logged"); }
   return j;
 }
 
-// ✅ NUOVO: POST form-urlencoded (per compatibilità con PHP $_POST)
-async function apiPostForm(url, bodyObj){
-  const params = new URLSearchParams();
-  Object.entries(bodyObj || {}).forEach(([k,v])=>{
-    if(v === undefined || v === null) return;
-    params.append(k, String(v));
-  });
-
-  const r = await fetch(url, {
-    method: "POST",
-    headers: {"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},
-    body: params.toString()
-  });
-
-  // il backend deve comunque rispondere JSON (come fa già il tuo sistema)
-  const j = await r.json().catch(()=>null);
-  if(!j) throw new Error("bad_json");
-  return j;
-}
 
 /* =========================
    UTILS
@@ -57,6 +54,18 @@ function fmtDMY(d){
   return `${dd}-${mm}-${yyyy}`;
 }
 const DOW = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+const SEASON_NAMES = {PRI:'🌸 Primavera', EST:'☀️ Estate', AUT:'🍂 Autunno', INV:'❄️ Inverno'};
+function getCurrentSeason(date){
+  const m = (date || new Date()).getMonth() + 1; // 1-12
+  if(m >= 3 && m <= 5) return 'PRI';
+  if(m >= 6 && m <= 8) return 'EST';
+  if(m >= 9 && m <= 11) return 'AUT';
+  return 'INV';
+}
+function filterPoolBySeason(pool, season){
+  const seasonal = pool.filter(p => !p.season || p.season === season);
+  return seasonal.length > 0 ? seasonal : pool; // fallback al pool completo
+}
 const MONTHS_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 function fmtHumanDate(d){
   const dd = String(d.getDate()).padStart(2,'0');
@@ -92,9 +101,9 @@ function toast(type, msg, title){
   const m = $("toastMsg");
   if(!wrap) return;
 
-  if(type === "ok"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-accent"; t.textContent = title || "OK"; }
-  if(type === "warn"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-warn"; t.textContent = title || "Attenzione"; }
-  if(type === "err"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-danger"; t.textContent = title || "Errore"; }
+  if(type === "ok"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-success shrink-0"; t.textContent = title || "OK"; }
+  if(type === "warn"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-warn shrink-0"; t.textContent = title || "Attenzione"; }
+  if(type === "err"){ dot.className="mt-1 h-2.5 w-2.5 rounded-full bg-danger shrink-0"; t.textContent = title || "Errore"; }
 
   m.textContent = msg;
   wrap.classList.remove("hidden");
@@ -133,6 +142,14 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
+}
+function shuffleArray(arr){
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 /* =========================
@@ -229,7 +246,7 @@ function tipGlobalCloseHandlers(){
 function pillIcon(icon, text, extraCls="", tipTitle="", tipBody=""){
   return `
     <button type="button"
-      class="js-tip inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border bg-white/70 ${extraCls}"
+      class="js-tip inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border bg-surface/80 ${extraCls}"
       data-tip-title="${escapeHtml(tipTitle)}"
       data-tip-body="${escapeHtml(tipBody)}">
       <span class="text-[12px]">${icon}</span>
@@ -257,7 +274,9 @@ const state = {
   saved: [],
   savedFilter: "",
   settings: null,
-  view: "plans"
+  view: "plans",
+  csrfToken: "",
+  dirty: false
 };
 
 /* =========================
@@ -268,7 +287,34 @@ async function refreshMe(){
   if(!j.ok) return null;
   if(!j.logged){ state.me=null; return null; }
   state.me = j.user;
+  state.csrfToken = j.csrf_token || "";
   return state.me;
+}
+
+/* =========================
+   LOGIN / REGISTER TABS
+   ========================= */
+function setLoginTab(tab){
+  const loginForm    = $("loginFormSection");
+  const registerForm = $("registerFormSection");
+  const btnLogin     = $("btnTabLogin");
+  const btnReg       = $("btnTabRegister");
+  if(!loginForm || !registerForm) return;
+
+  const activeTab   = "flex-1 py-3.5 text-sm font-semibold text-ink border-b-2 border-ink transition-colors";
+  const inactiveTab = "flex-1 py-3.5 text-sm font-medium text-muted border-b-2 border-transparent hover:text-ink transition-colors";
+
+  if(tab === "login"){
+    show(loginForm, true);
+    show(registerForm, false);
+    if(btnLogin)  btnLogin.className  = activeTab;
+    if(btnReg)    btnReg.className    = inactiveTab;
+  } else {
+    show(loginForm, false);
+    show(registerForm, true);
+    if(btnLogin)  btnLogin.className  = inactiveTab;
+    if(btnReg)    btnReg.className    = activeTab;
+  }
 }
 
 async function login(){
@@ -309,7 +355,11 @@ async function login(){
   loading(false);
 
   if(!response.ok){
-    $("loginStatus").textContent = "Credenziali errate";
+    if(response.error === "rate_limited"){
+      $("loginStatus").textContent = "Troppi tentativi. Riprova tra un minuto.";
+    } else {
+      $("loginStatus").textContent = "Credenziali errate";
+    }
     return;
   }
 
@@ -321,6 +371,65 @@ async function logout(){
   await apiGet("api/logout.php");
   loading(false);
   location.reload();
+}
+
+async function register(){
+  const username    = ($("regUsername")?.value    || "").trim();
+  const password    = ($("regPassword")?.value    || "");
+  const confirm     = ($("regConfirm")?.value     || "");
+  const invite_code = ($("regInviteCode")?.value  || "").trim().toUpperCase();
+  const status      = $("registerStatus");
+
+  const setStatus = (msg, isErr=true)=>{
+    if(!status) return;
+    status.textContent = msg;
+    status.className   = isErr ? "text-sm text-danger min-h-[18px]" : "text-sm text-success font-medium min-h-[18px]";
+  };
+
+  setStatus("");
+
+  if(!username){ setStatus("Inserisci un username"); return; }
+  if(!/^[a-zA-Z0-9._-]{3,30}$/.test(username)){ setStatus("Username non valido (3–30 caratteri, lettere/numeri/._-)"); return; }
+  if(password.length < 8){ setStatus("La password deve avere almeno 8 caratteri"); return; }
+  if(password !== confirm){ setStatus("Le password non coincidono"); return; }
+  if(!invite_code){ setStatus("Inserisci il codice invito del gruppo"); return; }
+
+  loading(true, "Registrazione", "Creo il tuo account…");
+  let j;
+  try {
+    const r = await fetch("api/register.php", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username, password, invite_code})
+    });
+    j = await r.json();
+  } catch(e) {
+    loading(false);
+    setStatus("Errore di connessione");
+    return;
+  }
+  loading(false);
+
+  if(!j || !j.ok){
+    let msg = j?.error || "errore";
+    if(msg === "bad_username")        msg = "Username non valido (3–30 caratteri, lettere/numeri/._-)";
+    if(msg === "password_too_short")  msg = "La password deve avere almeno 8 caratteri";
+    if(msg === "missing_invite_code") msg = "Inserisci il codice invito del gruppo";
+    if(msg === "invalid_invite_code") msg = "Codice invito non valido o non trovato";
+    if(msg === "username_exists")     msg = "Username già in uso, scegline un altro";
+    if(msg === "rate_limited")        msg = "Troppi tentativi. Riprova tra un'ora.";
+    setStatus(msg);
+    return;
+  }
+
+  // Successo
+  setStatus(`Account creato! Ora puoi accedere.`, false);
+  if($("regUsername"))   $("regUsername").value   = "";
+  if($("regPassword"))   $("regPassword").value   = "";
+  if($("regConfirm"))    $("regConfirm").value     = "";
+  if($("regInviteCode")) $("regInviteCode").value  = "";
+
+  setTimeout(()=>setLoginTab("login"), 2000);
 }
 
 /* =========================
@@ -391,6 +500,16 @@ function renderSettings(){
 
   if($("settingsSummary")) $("settingsSummary").textContent = rulesSummaryText();
   if($("settingsStatus")) $("settingsStatus").textContent = "—";
+
+  // Codice invito (solo admin)
+  const inviteSection = $("inviteCodeSection");
+  const inviteDisplay = $("inviteCodeDisplay");
+  if(inviteSection) show(inviteSection, isAdmin);
+  if(isAdmin && inviteDisplay){
+    inviteDisplay.textContent = s.invite_code || "—";
+  }
+
+  renderCsvStatus();
 }
 async function saveSettings(){
   if(state.me?.role !== "admin") return;
@@ -417,6 +536,9 @@ async function saveSettings(){
     rr.dayIndex = Math.max(0, Math.min(6, parseInt(rr.dayIndex,10)||0));
     rr.meal = (rr.meal === "lunch") ? "lunch" : "dinner";
   });
+
+  // invite_code: preserva quello in state (non editabile dal form)
+  s.invite_code = state.settings?.invite_code || "";
 
   loading(true,"Salvo impostazioni","Scrivo le regole…");
   const j = await apiPost("api/settings_save.php", {settings:s});
@@ -448,11 +570,11 @@ function setView(view){
     const bp = $(idPlans), bs = $(idSet);
     if(!bp || !bs) return;
     if(view === "plans"){
-      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold";
-      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-gray-50";
+      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90";
+      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors";
     } else {
-      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold";
-      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-gray-50";
+      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90";
+      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors";
     }
   };
 
@@ -468,10 +590,11 @@ function setView(view){
    DATA LOAD
    ========================= */
 async function loadPairs(){
-  const j = await apiGet("api/pairs_get.php");
-  if(!j.ok) { toast("err","Errore lettura CSV"); return; }
+  const j = await apiGet("api/pairs.php");
+  if(!j.ok) { toast("err","Errore lettura Piano Alimentare"); return; }
   state.pool = j.exists ? (j.pairs||[]) : [];
-  if(!j.exists) toast("warn","CSV non presente: caricalo da admin.");
+  if(!j.exists) toast("warn","Piano Alimentare non presente: caricalo nelle Impostazioni.");
+  renderCsvStatus();
 }
 async function loadSaved(){
   loading(true, "Aggiorno", "Carico la lista dei piani…");
@@ -489,30 +612,106 @@ async function loadGroupUsers(){
 /* =========================
    ADMIN: CSV + USERS
    ========================= */
-async function uploadCsv(isMobile=false){
-  const fileInput = isMobile ? $("csvUploadMobile") : $("csvUpload");
-  const status = isMobile ? $("csvStatusMobile") : $("csvStatus");
-  const f = fileInput?.files?.[0];
-  if(!f){ if(status) status.textContent = "Seleziona un CSV"; return; }
+function renderCsvStatus(){
+  const hasPool = !!(state.pool && state.pool.length);
+  const text    = hasPool ? `Piano Alimentare attivo: ${state.pool.length} coppie pranzo+cena` : "Nessun Piano Alimentare caricato";
+  const cls     = hasPool ? "text-xs text-success mt-1 font-medium" : "text-xs text-danger mt-1";
 
-  loading(true, "Upload CSV", "Carico il file…");
+  [$("csvCurrentStatus"), $("csvCurrentStatusUser")].forEach(el=>{
+    if(!el) return;
+    el.textContent = text;
+    el.className   = cls;
+  });
+
+  updateSeasonNote();
+}
+
+function updateSeasonNote(){
+  const el = $("seasonNote");
+  if(!el) return;
+  const total = state.pool ? state.pool.length : 0;
+  if(!total){ el.textContent = ''; return; }
+
+  const season = getCurrentSeason(new Date());
+  const seasonPool = filterPoolBySeason(state.pool, season);
+  const hasSeasonData = state.pool.some(p => p.season);
+  const isFallback = hasSeasonData && seasonPool.length === total;
+
+  if(!hasSeasonData){
+    el.textContent = `Stagione: ${SEASON_NAMES[season]} — ${total} coppie (nessun filtro stagionale nel Piano Alimentare)`;
+  } else if(isFallback){
+    el.textContent = `Stagione: ${SEASON_NAMES[season]} — nessuna coppia stagionale, userò tutto il pool (${total})`;
+  } else {
+    el.textContent = `Stagione: ${SEASON_NAMES[season]} — ${seasonPool.length} di ${total} coppie disponibili`;
+  }
+}
+
+async function uploadCsv(inputId, statusId){
+  const fileInput = $(inputId);
+  const status = $(statusId);
+  const f = fileInput?.files?.[0];
+  if(!f){ if(status) status.textContent = "Seleziona un file Piano Alimentare (.csv)"; return; }
+
+  // Modal scelta modalità
+  const hasExisting = state.pool && state.pool.length > 0;
+  const modeBody = `
+    <div class="space-y-3">
+      <label class="flex items-start gap-3 cursor-pointer p-3 rounded-2xl border border-line hover:bg-surface transition-colors">
+        <input type="radio" name="uploadMode" value="append" ${hasExisting ? "checked" : ""} class="mt-0.5 accent-ink shrink-0">
+        <div>
+          <div class="text-sm font-semibold text-ink">Aggiungi in coda</div>
+          <div class="text-xs text-muted mt-0.5">Le nuove coppie vengono aggiunte a quelle esistenti. I duplicati vengono ignorati automaticamente.</div>
+        </div>
+      </label>
+      <label class="flex items-start gap-3 cursor-pointer p-3 rounded-2xl border border-line hover:bg-surface transition-colors">
+        <input type="radio" name="uploadMode" value="replace" ${!hasExisting ? "checked" : ""} class="mt-0.5 accent-ink shrink-0">
+        <div>
+          <div class="text-sm font-semibold text-ink">Sostituisci tutto</div>
+          <div class="text-xs text-muted mt-0.5">Il Piano Alimentare esistente viene sostituito interamente con il nuovo file.</div>
+        </div>
+      </label>
+    </div>
+  `;
+
+  const confirmed = await modal({
+    title:   "Carica Piano Alimentare",
+    desc:    `File selezionato: ${escapeHtml(f.name)}`,
+    body:    modeBody,
+    okText:  "Carica",
+    cancelText: "Annulla"
+  });
+  if(!confirmed) return;
+
+  const mode = document.querySelector('input[name="uploadMode"]:checked')?.value || "replace";
+
+  loading(true, "Carico Piano Alimentare", "Invio il file…");
   if(status) status.textContent = "Caricamento…";
 
   const fd = new FormData();
   fd.append("file", f);
-  const r = await fetch("api/upload_pairs.php", {method:"POST", body:fd});
+  fd.append("mode", mode);
+  const r = await fetch("api/upload_pairs.php", {
+    method:"POST",
+    headers: {"X-CSRF-Token": state.csrfToken},
+    body:fd
+  });
   const j = await r.json().catch(()=>null);
 
   loading(false);
 
   if(!j || !j.ok){
-    if(status) status.textContent="Errore upload";
-    toast("err","Upload CSV non riuscito");
+    if(status) status.textContent = "Errore caricamento";
+    toast("err","Caricamento Piano Alimentare non riuscito");
     return;
   }
 
-  if(status) status.textContent="OK";
-  toast("ok","CSV caricato");
+  let msg = "";
+  if(j.mode === "append") msg = `Aggiunto: +${j.added} coppie (totale: ${j.total})`;
+  else                    msg = `Piano Alimentare caricato: ${j.total} coppie`;
+
+  if(status) status.textContent = msg;
+  if(fileInput) fileInput.value = "";
+  toast("ok", msg);
   await loadPairs();
 }
 
@@ -532,7 +731,7 @@ async function createUser(){
   if(!j.ok){
     let msg = j.error || "errore";
     if(msg==="bad_username") msg="Username non valido";
-    if(msg==="password_too_short") msg="Password troppo corta (min 6)";
+    if(msg==="password_too_short") msg="Password troppo corta (min 8 caratteri)";
     if(msg==="username_exists") msg="Username già esistente";
     if(status) status.textContent = "Errore: " + msg;
     toast("err", msg);
@@ -574,14 +773,7 @@ async function deleteUser(username){
 /* =========================
    POOL / GENERATION / RULES
    ========================= */
-function pickRandomPair(){
-  const i = Math.floor(Math.random() * state.pool.length);
-  return state.pool[i];
-}
-function makeRandomDay(){
-  const p = pickRandomPair();
-  return { lunch: p.lunch, dinner: p.dinner, locked:false };
-}
+
 function applyAlwaysOnRules(dayIndex, dayObj){
   // regole dal settings (per gruppo)
   const s = getSettings();
@@ -609,17 +801,39 @@ function generatePlan(){
   const start = $("startMonday")?.value;
   if(!start){ toast("warn","Seleziona il lunedì"); return; }
 
-  const numWeeks = parseInt($("numWeeks")?.value || "1",10);
   const startMonday = new Date(start + "T00:00:00");
+  if(startMonday.getDay() !== 1){
+    toast("warn","La data selezionata non è un lunedì");
+    return;
+  }
+
+  const numWeeks = parseInt($("numWeeks")?.value || "1",10);
 
   loading(true, "Genero", "Creo la settimana…");
+
+  // Filtra per stagione
+  const season = getCurrentSeason(startMonday);
+  const seasonPool = filterPoolBySeason(state.pool, season);
+  const isFallback = seasonPool.length === state.pool.length && state.pool.some(p => p.season);
+
+  // Deck shufflato ciclico: evita ripetizioni consecutive
+  let deck = shuffleArray(seasonPool);
+  let deckIdx = 0;
+  function pickFromDeck(){
+    if(deckIdx >= deck.length){
+      deck = shuffleArray(seasonPool);
+      deckIdx = 0;
+    }
+    return deck[deckIdx++];
+  }
 
   const weeks = [];
   for(let w=0; w<numWeeks; w++){
     const weekStart = addDays(startMonday, w*7);
     const days = [];
     for(let d=0; d<7; d++){
-      const day = makeRandomDay();
+      const p = pickFromDeck();
+      const day = { lunch: p.lunch, dinner: p.dinner, locked: false };
       applyAlwaysOnRules(d, day);
       days.push(day);
     }
@@ -635,9 +849,11 @@ function generatePlan(){
     displayLabel: makePlanLabel(startISO, weeks.length)
   };
 
+  state.dirty = true;
   state.activeWeek = 0;
   renderPlan();
-  if($("status")) $("status").textContent = "Generato.";
+  const seasonInfo = `${SEASON_NAMES[season]} — ${seasonPool.length} coppie${isFallback ? ' (fallback: pool completo)' : ''}`;
+  if($("status")) $("status").textContent = `Generato. ${seasonInfo}`;
   loading(false);
   toast("ok","Piano generato");
 }
@@ -675,15 +891,175 @@ async function savePlan(){
     return;
   }
 
+  state.dirty = false;
   toast("ok","Salvato");
   await loadSaved();
 }
 
 function clearView(){
   state.plan = null;
+  state.dirty = false;
   state.activeWeek = 0;
   renderPlan();
   toast("ok","Vista azzerata");
+}
+
+async function removeWeek(weekIndex){
+  if(state.me?.role !== "admin") return;
+  if(!state.plan?.id){ toast("warn","Salva il piano prima di rimuovere settimane"); return; }
+  if((state.plan.weeks?.length || 0) <= 1){ toast("warn","Non puoi rimuovere l'unica settimana"); return; }
+
+  const isMid = weekIndex > 0 && weekIndex < state.plan.weeks.length - 1;
+  const ok = await modal({
+    title: "Rimuovi settimana",
+    desc: `Settimana ${weekIndex + 1}`,
+    body: isMid
+      ? "Questa settimana è nel mezzo: il piano verrà diviso in due piani separati."
+      : "Vuoi rimuovere questa settimana dal piano?",
+    okText: "Rimuovi",
+    cancelText: "Annulla"
+  });
+  if(!ok) return;
+
+  loading(true, "Rimuovo settimana", "Aggiorno il piano…");
+  const j = await apiPost("api/remove_week.php", {id: state.plan.id, weekIndex});
+  loading(false);
+
+  if(!j.ok){ toast("err", j.error || "Errore rimozione settimana"); return; }
+
+  await loadSaved();
+
+  if(j.mode === "updated"){
+    const plan = await apiGet("api/load.php?id=" + encodeURIComponent(state.plan.id));
+    state.plan = plan;
+    state.activeWeek = Math.min(state.activeWeek, (state.plan.weeks?.length || 1) - 1);
+    renderPlan();
+    toast("ok", "Settimana rimossa");
+  } else {
+    // split: piano originale eliminato, creati 2 nuovi
+    state.plan = null;
+    state.activeWeek = 0;
+    renderPlan();
+    toast("ok", "Piano diviso in due parti — seleziona un piano dalla lista");
+  }
+}
+
+/* =========================
+   INVITE CODE
+   ========================= */
+async function regenInviteCode(){
+  const ok = await modal({
+    title: "Rigenera codice invito",
+    desc:  "Il vecchio codice non funzionerà più",
+    body:  "Vuoi generare un nuovo codice invito? Chi ha il vecchio codice non potrà più usarlo per registrarsi.",
+    okText: "Rigenera",
+    cancelText: "Annulla"
+  });
+  if(!ok) return;
+
+  // Genera nuovo codice lato client (8 hex chars uppercase)
+  const arr  = new Uint8Array(4);
+  crypto.getRandomValues(arr);
+  const code = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+
+  if(!state.settings) state.settings = defaultSettings();
+  state.settings.invite_code = code;
+
+  loading(true, "Rigenero codice", "Salvo…");
+  const j = await apiPost("api/settings_save.php", {settings: state.settings});
+  loading(false);
+
+  if(!j.ok){ toast("err", "Errore salvataggio"); return; }
+
+  renderSettings();
+  toast("ok", "Nuovo codice generato");
+}
+
+/* =========================
+   CAMBIO PASSWORD
+   ========================= */
+async function changePassword(){
+  const curr    = $("cpCurrent")?.value || "";
+  const newp    = $("cpNew")?.value || "";
+  const conf    = $("cpConfirm")?.value || "";
+  const status  = $("cpStatus");
+
+  if(!curr || !newp || !conf){ if(status) status.textContent = "Compila tutti i campi"; return; }
+  if(newp !== conf){ if(status) status.textContent = "Le password non coincidono"; return; }
+  if(newp.length < 8){ if(status) status.textContent = "Minimo 8 caratteri"; return; }
+
+  loading(true, "Aggiorno password", "Salvo…");
+  const j = await apiPost("api/change_password.php", {current_password: curr, new_password: newp});
+  loading(false);
+
+  if(!j.ok){
+    let msg = j.error || "errore";
+    if(msg === "wrong_password") msg = "Password attuale errata";
+    if(msg === "password_too_short") msg = "Minimo 8 caratteri";
+    if(status) status.textContent = "Errore: " + msg;
+    toast("err", msg);
+    return;
+  }
+
+  if($("cpCurrent")) $("cpCurrent").value = "";
+  if($("cpNew"))     $("cpNew").value = "";
+  if($("cpConfirm")) $("cpConfirm").value = "";
+  if(status) status.textContent = "Password aggiornata.";
+  toast("ok", "Password aggiornata");
+}
+
+/* =========================
+   EXPORT PIANO
+   ========================= */
+function exportPlanText(){
+  if(!state.plan){ toast("warn","Nessun piano da esportare"); return; }
+
+  const lines = [];
+  lines.push("PIANO PASTI: " + (state.plan.displayLabel || ""));
+  lines.push("");
+
+  state.plan.weeks.forEach((w, wi)=>{
+    const ws = new Date(w.weekStartISO + "T00:00:00");
+    lines.push(`── SETTIMANA ${wi+1} ── Dal ${fmtDMY(ws)} al ${fmtDMY(addDays(ws,6))}`);
+    w.days.forEach((d, di)=>{
+      const date = addDays(ws, di);
+      lines.push(`${DOW[di]} ${fmtDMY(date)}`);
+      lines.push(`  Pranzo: ${d.lunch || "—"}`);
+      lines.push(`  Cena:   ${d.dinner || "—"}`);
+    });
+    lines.push("");
+  });
+
+  const text = lines.join("\n");
+  navigator.clipboard.writeText(text).then(()=>{
+    toast("ok","Piano copiato negli appunti");
+  }).catch(()=>{
+    const w = window.open("","_blank");
+    w.document.write("<pre style='font-family:monospace;padding:20px'>" + escapeHtml(text) + "</pre>");
+    w.document.close();
+  });
+}
+
+function printPlan(){
+  if(!state.plan){ toast("warn","Nessun piano da stampare"); return; }
+
+  const rows = [];
+  state.plan.weeks.forEach((w, wi)=>{
+    const ws = new Date(w.weekStartISO + "T00:00:00");
+    rows.push(`<h3 style="font-family:system-ui;margin:16px 0 8px">Settimana ${wi+1} — Dal ${fmtDMY(ws)} al ${fmtDMY(addDays(ws,6))}</h3>`);
+    rows.push('<table style="width:100%;border-collapse:collapse;font-family:system-ui;font-size:14px">');
+    rows.push('<tr><th style="border:1px solid #ddd;padding:8px;text-align:left">Giorno</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Pranzo</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Cena</th></tr>');
+    w.days.forEach((d, di)=>{
+      const date = addDays(ws, di);
+      rows.push(`<tr><td style="border:1px solid #ddd;padding:8px"><b>${DOW[di]}</b> ${fmtDMY(date)}</td><td style="border:1px solid #ddd;padding:8px">${escapeHtml(d.lunch||"—")}</td><td style="border:1px solid #ddd;padding:8px">${escapeHtml(d.dinner||"—")}</td></tr>`);
+    });
+    rows.push('</table>');
+  });
+
+  const pw = window.open("","_blank");
+  pw.document.write(`<!doctype html><html><head><title>Piano pasti</title></head><body style="padding:24px"><h2 style="font-family:system-ui">${escapeHtml(state.plan.displayLabel||"Piano pasti")}</h2>${rows.join("")}</body></html>`);
+  pw.document.close();
+  pw.print();
 }
 
 /* =========================
@@ -728,16 +1104,17 @@ function openMealPicker(weekIndex, dayIndex){
       .forEach(p=>{
         const row = document.createElement("button");
         row.type = "button";
-        row.className="w-full text-left rounded-2xl border border-line bg-white hover:bg-gray-50 px-4 py-3";
+        row.className="w-full text-left rounded-2xl border border-line bg-white hover:bg-surface px-4 py-3 transition-colors";
         row.innerHTML = `
-          <div class="text-xs text-gray-500">Pranzo</div>
-          <div class="text-sm font-semibold">${escapeHtml(p.lunch)}</div>
-          <div class="mt-2 text-xs text-gray-500">Cena</div>
-          <div class="text-sm font-semibold">${escapeHtml(p.dinner)}</div>
+          <div class="text-xs text-muted">Pranzo</div>
+          <div class="text-sm font-semibold text-ink">${escapeHtml(p.lunch)}</div>
+          <div class="mt-2 text-xs text-muted">Cena</div>
+          <div class="text-sm font-semibold text-ink">${escapeHtml(p.dinner)}</div>
         `;
         row.onclick = ()=>{
           state.plan.weeks[weekIndex].days[dayIndex].lunch = p.lunch;
           state.plan.weeks[weekIndex].days[dayIndex].dinner = p.dinner;
+          state.dirty = true;
           $("modalWrap").classList.add("hidden");
           renderPlan();
           toast("ok","Giorno aggiornato");
@@ -767,7 +1144,7 @@ function renderSavedLists(){
     wrap.innerHTML = "";
 
     if(!items.length){
-      wrap.innerHTML = `<div class="text-sm text-gray-500">Nessun piano</div>`;
+      wrap.innerHTML = `<div class="text-sm text-muted">Nessun piano</div>`;
       return;
     }
 
@@ -777,16 +1154,17 @@ function renderSavedLists(){
 
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "flex-1 text-left rounded-2xl border border-line bg-white hover:bg-gray-50 px-4 py-3";
+      btn.className = "flex-1 text-left rounded-2xl border border-line bg-white hover:bg-surface px-4 py-3 transition-colors";
       btn.innerHTML = `
-        <div class="text-sm font-semibold">${escapeHtml(it.label || it.id)}</div>
-        <div class="text-xs text-gray-500 mt-1">${it.createdBy ? ("Creato da " + escapeHtml(it.createdBy)) : ""}</div>
+        <div class="text-sm font-semibold text-ink">${escapeHtml(it.label || it.id)}</div>
+        <div class="text-xs text-muted mt-1">${it.createdBy ? ("Creato da " + escapeHtml(it.createdBy)) : ""}</div>
       `;
       btn.onclick = async ()=>{
         loading(true, "Carico", "Apro il piano…");
         const plan = await apiGet("api/load.php?id=" + encodeURIComponent(it.id));
         loading(false);
         state.plan = plan;
+        state.dirty = false;
         state.activeWeek = 0;
         renderPlan();
         toast("ok","Piano caricato");
@@ -798,7 +1176,7 @@ function renderSavedLists(){
       if(state.me?.role === "admin"){
         const del = document.createElement("button");
         del.type = "button";
-        del.className = "shrink-0 rounded-2xl border border-line bg-white hover:bg-red-50 px-3 py-3 text-danger";
+        del.className = "shrink-0 rounded-2xl border border-line bg-white hover:bg-danger/10 px-3 py-3 text-danger transition-colors";
         del.textContent = "🗑";
         del.onclick = async ()=>{
           const ok = await modal({
@@ -810,7 +1188,7 @@ function renderSavedLists(){
           });
           if(!ok) return;
           loading(true, "Elimino", "Rimuovo il file…");
-          await apiGet("api/delete.php?id=" + encodeURIComponent(it.id));
+          await apiPost("api/delete.php", {id: it.id});
           loading(false);
           toast("ok","Piano eliminato");
           await loadSaved();
@@ -836,7 +1214,7 @@ function renderUsers(items){
   wrap.innerHTML = "";
 
   if(!items.length){
-    wrap.innerHTML = `<div class="text-sm text-gray-500">—</div>`;
+    wrap.innerHTML = `<div class="text-sm text-muted">—</div>`;
     return;
   }
 
@@ -848,11 +1226,11 @@ function renderUsers(items){
     left.className = "min-w-0";
 
     const top = document.createElement("div");
-    top.className = "text-sm font-semibold truncate";
+    top.className = "text-sm font-semibold truncate text-ink";
     top.textContent = u.username;
 
     const meta = document.createElement("div");
-    meta.className = "text-xs text-gray-600";
+    meta.className = "text-xs text-muted";
     meta.textContent = `ruolo: ${u.role}`;
 
     left.appendChild(top);
@@ -866,7 +1244,7 @@ function renderUsers(items){
     if(state.me?.role === "admin"){
       const del = document.createElement("button");
       del.type = "button";
-      del.className = "rounded-2xl border border-line px-3 py-2 hover:bg-red-50 text-danger";
+      del.className = "rounded-2xl border border-line px-3 py-2 hover:bg-danger/10 text-danger transition-colors";
       del.textContent = "Elimina";
       del.onclick = ()=>deleteUser(u.username);
       right.appendChild(del);
@@ -890,11 +1268,12 @@ function renderPlan(){
   if(!state.plan){
     if($("currentLabel")) $("currentLabel").textContent = "—";
     tabs.innerHTML = "";
-    content.innerHTML = `<div class="text-sm text-gray-600">Seleziona un piano salvato o genera un nuovo piano (admin).</div>`;
+    content.innerHTML = `<div class="text-sm text-muted">Seleziona un piano salvato o genera un nuovo piano (admin).</div>`;
     return;
   }
 
   if($("currentLabel")) $("currentLabel").textContent = state.plan.displayLabel || makePlanLabel(state.plan.startMondayISO, state.plan.weeks.length);
+  show($("dirtyIndicator"), state.dirty);
 
   // tabs
   tabs.innerHTML = "";
@@ -903,8 +1282,8 @@ function renderPlan(){
     b.type="button";
     const active = idx === state.activeWeek;
     b.className = active
-      ? "rounded-2xl px-3 py-2 border border-line bg-ink text-white text-sm font-semibold"
-      : "rounded-2xl px-3 py-2 border border-line bg-white hover:bg-gray-50 text-sm";
+      ? "rounded-2xl px-3 py-2 border border-line bg-ink text-white text-sm font-semibold transition-opacity hover:opacity-90"
+      : "rounded-2xl px-3 py-2 border border-line bg-white hover:bg-surface text-sm transition-colors";
     b.textContent = `Settimana ${idx+1}`;
     b.onclick = ()=>{ state.activeWeek = idx; renderPlan(); };
     tabs.appendChild(b);
@@ -919,24 +1298,40 @@ function renderPlan(){
   const hleft = document.createElement("div");
   hleft.innerHTML = `
     <div class="text-sm font-semibold">Dal ${fmtDMY(weekStart)} al ${fmtDMY(addDays(weekStart, 6))}</div>
-    <div class="text-xs text-gray-600 mt-1">Regole gruppo: ${escapeHtml(rulesSummaryText().replaceAll("\n"," • "))}</div>
+    <div class="text-xs text-muted mt-1">Regole gruppo: ${escapeHtml(rulesSummaryText().replaceAll("\n"," • "))}</div>
   `;
   header.appendChild(hleft);
+
+  if(isAdmin && state.plan?.id && state.plan.weeks.length > 1){
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "rounded-2xl border border-danger/40 text-danger px-3 py-2 text-xs hover:bg-danger/10 transition-colors";
+    removeBtn.textContent = "Rimuovi settimana";
+    removeBtn.onclick = ()=>removeWeek(state.activeWeek);
+    header.appendChild(removeBtn);
+  }
 
   const daysWrap = document.createElement("div");
   daysWrap.className = "mt-4 space-y-3";
 
+  const todayISO = fmtISO(new Date());
+
   week.days.forEach((d, idx)=>{
     const date = addDays(weekStart, idx);
+    const isToday = fmtISO(date) === todayISO;
 
     const card = document.createElement("div");
-    card.className = "rounded-3xl border border-line bg-white shadow-sm overflow-hidden";
+    card.className = isToday
+      ? "rounded-3xl border-2 border-accent shadow-md overflow-hidden"
+      : "rounded-3xl border border-line bg-white shadow-sm overflow-hidden";
 
     // top
     const top = document.createElement("div");
-    top.className = "px-5 py-4 bg-slate-50 border-b border-line";
+    top.className = "px-5 py-4 bg-surface border-b border-line";
 
     const badges = [];
+
+    if(isToday) badges.push('<span class="inline-flex items-center text-[11px] px-2 py-1 rounded-full bg-success/20 border border-success/40 text-success font-semibold">Oggi</span>');
 
     // badge pizza/libero con tooltip
     const s = getSettings();
@@ -964,7 +1359,7 @@ function renderPlan(){
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-sm font-semibold">${DOW[idx]} • ${fmtDMY(date)}</div>
-          <div class="text-xs text-gray-600 mt-1">${d.locked ? "bloccato" : "libero"}</div>
+          <div class="text-xs text-muted mt-1">${d.locked ? "bloccato" : "libero"}</div>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
           ${badges.join("")}
@@ -972,21 +1367,39 @@ function renderPlan(){
       </div>
     `;
 
-    // ✏️ Icona modifica (solo admin)
+    // Pulsanti admin (modifica + blocco)
     if(isAdmin){
       const right = top.querySelector(".flex.flex-wrap.items-center.justify-end.gap-2");
       if(right){
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "shrink-0 rounded-full border border-line bg-white/80 hover:bg-white px-2.5 py-2 text-sm";
-        editBtn.title = "Modifica pranzo + cena";
-        editBtn.textContent = "✏️";
-        editBtn.onclick = (e)=>{
+        // Modifica solo se non bloccato
+        if(!d.locked){
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "shrink-0 rounded-full border border-line bg-white/80 hover:bg-white px-2.5 py-2 text-sm";
+          editBtn.title = "Modifica pranzo + cena";
+          editBtn.textContent = "✏️";
+          editBtn.onclick = (e)=>{
+            e.preventDefault();
+            e.stopPropagation();
+            openMealPicker(state.activeWeek, idx);
+          };
+          right.appendChild(editBtn);
+        }
+
+        // Lock toggle
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = "shrink-0 rounded-full border border-line bg-white/80 hover:bg-white px-2.5 py-2 text-sm";
+        lockBtn.title = d.locked ? "Sblocca giorno" : "Blocca giorno";
+        lockBtn.textContent = d.locked ? "🔒" : "🔓";
+        lockBtn.onclick = (e)=>{
           e.preventDefault();
           e.stopPropagation();
-          openMealPicker(state.activeWeek, idx);
+          state.plan.weeks[state.activeWeek].days[idx].locked = !d.locked;
+          state.dirty = true;
+          renderPlan();
         };
-        right.appendChild(editBtn);
+        right.appendChild(lockBtn);
       }
     }
 
@@ -995,21 +1408,21 @@ function renderPlan(){
     const body = document.createElement("div");
     body.className = "px-5 py-4 space-y-3";
 
-    const mealBox = (title, value, dotCls)=>{
+    const mealBox = (title, value, dotCls, boxCls)=>{
       const box = document.createElement("div");
-      box.className = "rounded-2xl border border-line bg-white px-4 py-3";
+      box.className = `rounded-2xl border px-4 py-3 ${boxCls}`;
       box.innerHTML = `
         <div class="flex items-center gap-2">
           <span class="inline-block h-2.5 w-2.5 rounded-full ${dotCls}"></span>
-          <div class="text-xs font-semibold text-gray-700">${title}</div>
+          <div class="text-xs font-semibold text-muted">${title}</div>
         </div>
-        <div class="text-sm text-gray-800 mt-2 whitespace-pre-wrap">${escapeHtml(value || "—")}</div>
+        <div class="text-sm text-ink mt-2 whitespace-pre-wrap">${escapeHtml(value || "—")}</div>
       `;
       return box;
     };
 
-    body.appendChild(mealBox("Pranzo", d.lunch, "bg-accent"));
-    body.appendChild(mealBox("Cena", d.dinner, "bg-accent2"));
+    body.appendChild(mealBox("Pranzo", d.lunch, "bg-peach", "border-peach/40 bg-peach/10"));
+    body.appendChild(mealBox("Cena",   d.dinner, "bg-accent2", "border-accent2/40 bg-accent2/10"));
 
     card.appendChild(body);
     daysWrap.appendChild(card);
@@ -1020,6 +1433,340 @@ function renderPlan(){
   content.appendChild(daysWrap);
 
   bindAllTips(content);
+  renderTodayBanner();
+}
+
+/* =========================
+   BANNER OGGI
+   ========================= */
+function renderTodayBanner(){
+  const banner = $("todayBanner");
+  if(!banner) return;
+
+  if(!state.plan){ show(banner, false); return; }
+
+  const todayISO = fmtISO(new Date());
+  let foundDay = null, todayDate = null, foundDayIdx = null;
+
+  outer:
+  for(const week of state.plan.weeks){
+    const ws = new Date(week.weekStartISO + "T00:00:00");
+    for(let d = 0; d < week.days.length; d++){
+      const date = addDays(ws, d);
+      if(fmtISO(date) === todayISO){
+        foundDay    = week.days[d];
+        todayDate   = date;
+        foundDayIdx = d;
+        break outer;
+      }
+    }
+  }
+
+  if(!foundDay){ show(banner, false); return; }
+
+  show(banner, true);
+  if($("todayBannerDate"))
+    $("todayBannerDate").textContent = `${DOW[foundDayIdx]} • ${fmtHumanDate(todayDate)}`;
+  if($("todayLunch"))  $("todayLunch").textContent  = foundDay.lunch  || "—";
+  if($("todayDinner")) $("todayDinner").textContent = foundDay.dinner || "—";
+}
+
+/* =========================
+   STATISTICHE POOL
+   ========================= */
+async function loadStats(){
+  const content = $("statsContent");
+  if(!content) return;
+
+  const isAdmin = state.me?.role === "admin";
+
+  content.innerHTML = `<div class="text-sm text-muted text-center py-6">Caricamento…</div>`;
+
+  let j;
+  try { j = await apiGet("api/stats.php"); }
+  catch(e){
+    content.innerHTML = `<div class="text-sm text-danger">Errore caricamento statistiche.</div>`;
+    return;
+  }
+
+  // Header: info reset + bottone (admin) + totali
+  const resetInfo = j.reset_at
+    ? `<span class="text-[11px] text-muted">Azzerato il ${new Date(j.reset_at).toLocaleDateString("it-IT",{day:"2-digit",month:"long",year:"numeric"})}</span>`
+    : "";
+
+  const resetBtn = isAdmin
+    ? `<button id="btnResetStats" class="rounded-2xl border border-danger/40 text-danger px-3 py-1.5 text-xs hover:bg-danger/10 transition-colors">Azzera statistiche</button>`
+    : "";
+
+  let html = `
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        ${resetInfo}
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        ${j.ok && j.items?.length ? `<span class="text-xs font-semibold text-ink bg-surface border border-line px-2.5 py-1 rounded-full">${j.total_days} giorni analizzati</span>` : ""}
+        ${resetBtn}
+      </div>
+    </div>
+  `;
+
+  if(!j.ok || !j.items?.length){
+    html += `<div class="text-sm text-muted">Nessun dato disponibile. Salva almeno un piano per vedere le statistiche.</div>`;
+    content.innerHTML = html;
+    bindStatsResetBtn();
+    return;
+  }
+
+  const items    = j.items;
+  const maxCount = items[0].count;
+
+  html += `<div class="space-y-2">`;
+
+  items.forEach((item, i)=>{
+    const pct   = Math.round((item.count / maxCount) * 100);
+    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉"
+                : `<span class="text-[11px] font-bold text-muted w-5 inline-block text-center">${i+1}</span>`;
+    html += `
+      <div class="rounded-2xl border border-line bg-white px-4 py-3">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="shrink-0 w-5 text-center text-sm">${medal}</span>
+            <div class="min-w-0">
+              <span class="text-xs font-semibold text-ink">${escapeHtml(item.lunch)}</span>
+              <span class="text-muted mx-1 text-xs">·</span>
+              <span class="text-xs font-semibold text-ink">${escapeHtml(item.dinner)}</span>
+            </div>
+          </div>
+          <div class="shrink-0 text-xs font-bold text-ink">${item.count}×</div>
+        </div>
+        <div class="h-1.5 rounded-full bg-surface overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-peach to-accent2" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  content.innerHTML = html;
+  bindStatsResetBtn();
+}
+
+function bindStatsResetBtn(){
+  $("btnResetStats")?.addEventListener("click", resetStats);
+}
+
+async function resetStats(){
+  const ok = await modal({
+    title:      "Azzera statistiche",
+    desc:       "Operazione irreversibile",
+    body:       "Vuoi azzerare le statistiche? I piani salvati non verranno eliminati, ma le statistiche ripartiranno da zero contando solo i piani salvati da questo momento in poi.",
+    okText:     "Azzera",
+    cancelText: "Annulla"
+  });
+  if(!ok) return;
+
+  loading(true, "Azzero statistiche", "Salvo timestamp…");
+  const j = await apiPost("api/stats_reset.php", {});
+  loading(false);
+
+  if(!j.ok){ toast("err", "Errore azzeramento"); return; }
+
+  toast("ok", "Statistiche azzerate");
+  await loadStats();
+}
+
+/* =========================
+   LOG ATTIVITÀ
+   ========================= */
+const LOG_ACTION_LABELS = {
+  piano_salvato:        { icon:"💾", label:"Piano salvato" },
+  piano_eliminato:      { icon:"🗑", label:"Piano eliminato" },
+  utente_creato:        { icon:"👤", label:"Utente creato" },
+  utente_eliminato:     { icon:"❌", label:"Utente eliminato" },
+  csv_caricato:                  { icon:"📄", label:"Piano Alimentare caricato" },
+  piano_alimentare_aggiunto:     { icon:"📄", label:"Piano Alimentare — aggiunto" },
+  piano_alimentare_sostituito:   { icon:"📄", label:"Piano Alimentare — sostituito" },
+  statistiche_azzerate: { icon:"🔄", label:"Statistiche azzerate" },
+  impostazioni_salvate: { icon:"⚙️", label:"Impostazioni salvate" },
+  backup_esportato:     { icon:"📦", label:"Backup esportato" },
+  backup_ripristinato:  { icon:"♻️", label:"Backup ripristinato" },
+};
+
+async function loadLog(){
+  const content = $("logContent");
+  if(!content) return;
+  content.innerHTML = `<div class="text-sm text-muted text-center py-6">Caricamento…</div>`;
+
+  let j;
+  try { j = await apiGet("api/log.php"); }
+  catch(e){
+    content.innerHTML = `<div class="text-sm text-danger">Errore caricamento log.</div>`;
+    return;
+  }
+
+  if(!j.ok || !j.items?.length){
+    content.innerHTML = `<div class="text-sm text-muted">Nessuna attività registrata.</div>`;
+    return;
+  }
+
+  const rows = j.items.map(item=>{
+    const meta  = LOG_ACTION_LABELS[item.action] || { icon:"•", label: item.action };
+    const ts    = item.ts ? new Date(item.ts).toLocaleString("it-IT", {
+      day:"2-digit", month:"2-digit", year:"numeric",
+      hour:"2-digit", minute:"2-digit"
+    }) : "—";
+
+    const detailParts = [];
+    if(item.details?.label)    detailParts.push(escapeHtml(item.details.label));
+    if(item.details?.username) detailParts.push("utente: " + escapeHtml(item.details.username));
+    if(item.details?.filename) detailParts.push(escapeHtml(item.details.filename));
+    if(item.details?.id && !item.details?.label) detailParts.push(escapeHtml(item.details.id));
+    if(item.details?.plans_count !== undefined) detailParts.push(`${item.details.plans_count} piani`);
+    if(item.details?.plans !== undefined) detailParts.push(`+${item.details.plans} piani, skip:${item.details.plans_skipped||0}`);
+
+    return `
+      <div class="flex items-start gap-3 rounded-2xl border border-line bg-white px-4 py-3">
+        <span class="shrink-0 text-base mt-0.5">${meta.icon}</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-sm font-semibold text-ink">${meta.label}</span>
+            <span class="text-[11px] text-muted shrink-0">${ts}</span>
+          </div>
+          <div class="text-xs text-muted mt-0.5">
+            <span class="font-medium">${escapeHtml(item.user || "—")}</span>
+            ${detailParts.length ? " · " + detailParts.join(" · ") : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  content.innerHTML = `<div class="space-y-2">${rows.join("")}</div>`;
+}
+
+/* =========================
+   AVVISO PIANO IN SCADENZA
+   ========================= */
+function checkPlanExpiry(){
+  if(state.me?.role !== "admin") return;
+
+  const banner  = $("expiryBanner");
+  const msg     = $("expiryMsg");
+  if(!banner || !msg) return;
+
+  const todayISO = fmtISO(new Date());
+
+  // Trova il piano con end date più lontana
+  const latest = state.saved
+    .filter(it => it.endISO)
+    .sort((a,b) => b.endISO.localeCompare(a.endISO))[0];
+
+  if(!latest){
+    // Nessun piano salvato
+    show(banner, true);
+    msg.textContent = "Nessun piano salvato. Genera il primo piano.";
+    prefillNextMonday(null);
+    return;
+  }
+
+  const daysLeft = Math.ceil(
+    (new Date(latest.endISO + "T00:00:00") - new Date(todayISO + "T00:00:00"))
+    / (1000 * 60 * 60 * 24)
+  );
+
+  if(daysLeft <= 7){
+    show(banner, true);
+    if(daysLeft < 0)     msg.textContent = `Il piano è scaduto ${Math.abs(daysLeft)} giorni fa. Genera un nuovo piano.`;
+    else if(daysLeft === 0) msg.textContent = "Il piano termina oggi. Genera il piano per la prossima settimana.";
+    else                 msg.textContent = `Il piano termina tra ${daysLeft} giorn${daysLeft===1?"o":"i"}. Genera il piano successivo.`;
+    prefillNextMonday(latest.endISO);
+  } else {
+    show(banner, false);
+  }
+}
+
+function prefillNextMonday(lastEndISO){
+  const input = $("startMonday");
+  if(!input) return;
+  const base = lastEndISO ? new Date(lastEndISO + "T00:00:00") : new Date();
+  // prossimo lunedì dopo l'end date
+  const day  = base.getDay(); // 0=dom
+  const diff = day === 0 ? 1 : (8 - day);
+  const next = addDays(base, day === 1 ? 7 : diff); // se già lun, +7
+  input.value = fmtISO(next);
+}
+
+/* =========================
+   BACKUP / RESTORE
+   ========================= */
+async function downloadBackup(){
+  // Apre direttamente la URL di download (il PHP restituisce attachment)
+  window.location.href = "api/backup.php";
+  toast("ok", "Download backup avviato");
+  // Log già scritto lato server
+}
+
+async function restoreBackup(){
+  const fileInput = $("restoreFile");
+  const statusEl  = $("restoreStatus");
+  if(!fileInput?.files?.length){
+    if(statusEl) statusEl.textContent = "Seleziona un file JSON di backup";
+    return;
+  }
+
+  const ok = await modal({
+    title: "Ripristina backup",
+    desc:  "Operazione importante",
+    body:  "I piani già esistenti non verranno sovrascritti, ma CSV e impostazioni verranno sostituiti con quelli del backup. Continuare?",
+    okText: "Ripristina",
+    cancelText: "Annulla"
+  });
+  if(!ok) return;
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  loading(true, "Ripristino", "Importo dati…");
+  let j;
+  try {
+    const r = await fetch("api/restore.php", {
+      method: "POST",
+      headers: { "X-CSRF-Token": state.csrfToken },
+      body: formData
+    });
+    j = await r.json().catch(()=>null);
+  } catch(e) {
+    j = null;
+  }
+  loading(false);
+
+  if(!j?.ok){
+    const err = j?.error || "errore";
+    let errMsg = err;
+    if(err === "group_mismatch") errMsg = `Il backup è del gruppo "${j.backup_group}", non del tuo gruppo`;
+    if(err === "invalid_backup_format") errMsg = "File non valido o formato non riconosciuto";
+    if(statusEl) statusEl.textContent = "Errore: " + errMsg;
+    toast("err", errMsg);
+    return;
+  }
+
+  const r = j.restored || {};
+  const summary = [
+    `${r.plans || 0} piani importati`,
+    r.plans_skipped ? `${r.plans_skipped} già esistenti (saltati)` : null,
+    r.csv ? "CSV aggiornato" : null,
+    r.settings ? "impostazioni aggiornate" : null,
+  ].filter(Boolean).join(", ");
+
+  if(statusEl) statusEl.textContent = summary;
+  toast("ok", "Backup ripristinato — " + summary);
+
+  // Ricarica dati
+  await loadSaved();
+  await loadSettings();
+  await loadPairs();
+  renderPlan();
+  renderSettings();
 }
 
 /* =========================
@@ -1044,9 +1791,11 @@ function renderPlan(){
     if($("whoamiMobile")) $("whoamiMobile").textContent = whoText;
   
     const isAdmin = me.role === "admin";
-    show($("adminUpload"), isAdmin);
-    show($("adminUploadMobile"), isAdmin);
+    show($("csvSettingsSection"), isAdmin);
+    show($("csvViewSection"), !isAdmin);
     show($("adminControls"), isAdmin);
+    show($("logSection"), isAdmin);
+    show($("backupSection"), isAdmin);
   
     if(isAdmin && $("startMonday")){
       const now = new Date();
@@ -1059,21 +1808,44 @@ function renderPlan(){
     loading(true, "Avvio", "Carico dati…");
   
     try{
-      // queste chiamate a volte falliscono (404 / JSON non valido / permessi)
       await loadSettings();
       await loadPairs();
       await loadSaved();
       if(isAdmin) await loadGroupUsers();
+
+      // Auto-load piano attivo (copre la data di oggi)
+      const todayISO   = fmtISO(new Date());
+      const activeMeta = state.saved.find(it =>
+        it.startISO && it.endISO &&
+        it.startISO <= todayISO && todayISO <= it.endISO
+      );
+      if(activeMeta){
+        try{
+          const plan  = await apiGet("api/load.php?id=" + encodeURIComponent(activeMeta.id));
+          state.plan  = plan;
+          state.dirty = false;
+          // Trova la settimana che contiene oggi
+          if(plan.weeks){
+            for(let i = 0; i < plan.weeks.length; i++){
+              const ws  = new Date(plan.weeks[i].weekStartISO + "T00:00:00");
+              const we  = addDays(ws, 6);
+              const tod = new Date(todayISO + "T00:00:00");
+              if(tod >= ws && tod <= we){ state.activeWeek = i; break; }
+            }
+          }
+        }catch(e){ console.warn("Auto-load piano attivo fallito", e); }
+      }
     }catch(err){
       console.error("BOOT load failed:", err);
       toast("err", "Errore avvio: " + (err?.message || err));
     }finally{
-      loading(false); // <— questa è la parte che ti sblocca per sempre
+      loading(false);
     }
-  
+
     setView(state.view || "plans");
     renderSettings();
     renderPlan();
+    checkPlanExpiry();
   }
 
 /* =========================
@@ -1081,6 +1853,38 @@ function renderPlan(){
    ========================= */
 document.addEventListener("DOMContentLoaded", ()=>{
   tipGlobalCloseHandlers();
+
+  // Login / Register tabs
+  $("btnTabLogin")?.addEventListener("click",    ()=>setLoginTab("login"));
+  $("btnTabRegister")?.addEventListener("click", ()=>setLoginTab("register"));
+
+  // Toggle visibilità password nella registrazione
+  $("btnToggleRegPass")?.addEventListener("click", ()=>{
+    const inp = $("regPassword");
+    if(!inp) return;
+    inp.type = inp.type === "password" ? "text" : "password";
+  });
+
+  // Uppercase automatico sul codice invito
+  $("regInviteCode")?.addEventListener("input", (e)=>{
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+  });
+
+  $("btnRegister")?.addEventListener("click", register);
+
+  // Invio con Enter nei campi registrazione
+  ["regUsername","regPassword","regConfirm","regInviteCode"].forEach(id=>{
+    $(id)?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") register(); });
+  });
+
+  // Invite code: copia e rigenera
+  $("btnCopyInviteCode")?.addEventListener("click", ()=>{
+    const code = $("inviteCodeDisplay")?.textContent || "";
+    navigator.clipboard.writeText(code).then(()=>toast("ok","Codice copiato")).catch(()=>toast("warn","Copia manuale: " + code));
+  });
+  $("btnRegenInviteCode")?.addEventListener("click", regenInviteCode);
 
   const btn = $("btnLogin");
 if(btn){
@@ -1090,6 +1894,10 @@ if(btn){
     login();
   };
 }
+
+  ["loginUser","loginPass"].forEach(id=>{
+    $(id)?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") login(); });
+  });
 
   $("btnLogout")?.addEventListener("click", logout);
   $("btnLogoutMobile")?.addEventListener("click", logout);
@@ -1102,8 +1910,7 @@ if(btn){
   $("savedSearch")?.addEventListener("input", (e)=>{ state.savedFilter = e.target.value; renderSavedLists(); });
   $("savedSearchMobile")?.addEventListener("input", (e)=>{ state.savedFilter = e.target.value; renderSavedLists(); });
 
-  $("btnUploadCsv")?.addEventListener("click", ()=>uploadCsv(false));
-  $("btnUploadCsvMobile")?.addEventListener("click", ()=>uploadCsv(true));
+  $("btnUploadCsvSettings")?.addEventListener("click", ()=>uploadCsv("csvUploadSettings","csvStatusSettings"));
 
   $("btnCreateUser")?.addEventListener("click", createUser);
 
@@ -1117,16 +1924,39 @@ if(btn){
   $("btnNavSettingsMobile")?.addEventListener("click", ()=>{ setView("settings"); closeDrawer(); });
 
   $("btnSaveSettings")?.addEventListener("click", saveSettings);
+  $("btnChangePassword")?.addEventListener("click", changePassword);
+  $("btnCopyPlan")?.addEventListener("click", exportPlanText);
+  $("btnPrintPlan")?.addEventListener("click", printPlan);
 
-  const usersToggle = document.getElementById("usersAccordionToggle");
-  const usersBody = document.getElementById("adminUsers");
-  const usersIcon = document.getElementById("usersAccordionIcon");
-  if(usersToggle && usersBody){
-    usersToggle.addEventListener("click", ()=>{
-      usersBody.classList.toggle("hidden");
-      usersIcon?.classList.toggle("rotate-180");
-    });
-  }
+  const makeAccordion = (toggleId, bodyId, iconId, onOpen=null)=>{
+    const toggle = document.getElementById(toggleId);
+    const body   = document.getElementById(bodyId);
+    const icon   = document.getElementById(iconId);
+    if(toggle && body){
+      toggle.addEventListener("click", ()=>{
+        const wasHidden = body.classList.contains("hidden");
+        body.classList.toggle("hidden");
+        icon?.classList.toggle("rotate-180");
+        if(wasHidden && onOpen) onOpen();
+      });
+    }
+  };
+
+  makeAccordion("settingsRulesToggle", "settingsRulesBody", "settingsRulesIcon");
+  makeAccordion("csvSettingsToggle",   "csvSettingsBody",   "csvSettingsIcon");
+  makeAccordion("cpToggle",            "cpBody",            "cpIcon");
+  makeAccordion("usersAccordionToggle","adminUsers",        "usersAccordionIcon");
+  makeAccordion("statsToggle",         "statsBody",         "statsIcon", loadStats);
+  makeAccordion("logToggle",           "logBody",           "logIcon",   loadLog);
+  makeAccordion("backupToggle",        "backupBody",        "backupIcon");
+
+  $("btnGenerateNext")?.addEventListener("click", ()=>{
+    setView("plans");
+    $("adminControls")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  });
+
+  $("btnDownloadBackup")?.addEventListener("click", downloadBackup);
+  $("btnRestoreBackup")?.addEventListener("click",  restoreBackup);
 
   boot();
 });

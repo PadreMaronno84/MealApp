@@ -158,6 +158,56 @@ function ranges_overlap(DateTime $aStart, DateTime $aEnd, DateTime $bStart, Date
   return ($aStart <= $bEnd) && ($bStart <= $aEnd);
 }
 
+function ensure_csrf_token(): string {
+  if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  return $_SESSION['csrf_token'];
+}
+
+function verify_csrf(): void {
+  $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+  $expected = $_SESSION['csrf_token'] ?? '';
+  if ($expected === '' || !hash_equals($expected, $token)) {
+    json_out(['ok'=>false,'error'=>'csrf_invalid'], 403);
+  }
+}
+
+/**
+ * Appende un evento al log attività del gruppo.
+ * Storage: storage/logs/{group}.jsonl (una riga JSON per evento)
+ * Trim automatico a 500 righe (ogni ~20 chiamate).
+ */
+function log_activity(string $group, string $username, string $action, array $details = []): void {
+  $dir = storage_base() . '/logs';
+  @mkdir($dir, 0775, true);
+  $file = $dir . '/' . $group . '.jsonl';
+
+  $entry = json_encode([
+    'ts'      => (new DateTime())->format(DateTime::ATOM),
+    'user'    => $username,
+    'action'  => $action,
+    'details' => $details,
+  ], JSON_UNESCAPED_UNICODE);
+
+  $fp = @fopen($file, 'a');
+  if ($fp) {
+    flock($fp, LOCK_EX);
+    fwrite($fp, $entry . "\n");
+    flock($fp, LOCK_UN);
+    fclose($fp);
+  }
+
+  // Trim occasionale a 500 righe
+  if (random_int(0, 19) === 0) {
+    $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines && count($lines) > 500) {
+      $lines = array_slice($lines, -500);
+      @file_put_contents($file, implode("\n", $lines) . "\n");
+    }
+  }
+}
+
 /**
  * Cancella file piani scaduti:
  * scade dopo 1 mese dall'ultimo giorno (end + 1 month)

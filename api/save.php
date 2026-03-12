@@ -1,11 +1,22 @@
 <?php
 require __DIR__ . '/common.php';
 $me = require_admin();
+verify_csrf();
 
 $data = read_json_body();
 
 $rNew = plan_range($data);
 if (!$rNew) json_out(['ok'=>false,'error'=>'invalid_payload'], 400);
+
+// Validazione: startMondayISO deve essere un lunedì (N=1 in ISO-8601)
+try {
+  $checkDay = new DateTime(($data['startMondayISO'] ?? '') . ' 00:00:00');
+  if ((int)$checkDay->format('N') !== 1) {
+    json_out(['ok'=>false,'error'=>'not_a_monday'], 400);
+  }
+} catch (Exception $e) {
+  json_out(['ok'=>false,'error'=>'invalid_date'], 400);
+}
 
 $dir = group_saved_dir();
 
@@ -51,5 +62,10 @@ $data['group'] = $me['group'];
 
 $raw = json_encode($data, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 if (@file_put_contents($file, $raw) === false) json_out(['ok'=>false,'error'=>'write_failed'], 500);
+
+log_activity($me['group'], $me['username'], 'piano_salvato', [
+  'id' => $id, 'label' => $data['displayLabel'] ?? '',
+  'start' => $rNew['startISO'], 'end' => $rNew['endISO'],
+]);
 
 json_out(['ok'=>true,'id'=>$id]);

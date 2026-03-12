@@ -15,11 +15,14 @@ foreach ($files as $f) {
   $j = json_decode($raw ?: '', true);
   if (!is_array($j)) continue;
 
+  $r = plan_range($j);
   $out[] = [
-    'id' => basename($f, '.json'),
-    'label' => $j['displayLabel'] ?? basename($f, '.json'),
+    'id'        => basename($f, '.json'),
+    'label'     => $j['displayLabel'] ?? basename($f, '.json'),
     'createdAt' => $j['createdAt'] ?? null,
-    'createdBy' => $j['createdBy'] ?? null
+    'createdBy' => $j['createdBy'] ?? null,
+    'startISO'  => $r ? $r['startISO'] : null,
+    'endISO'    => $r ? $r['endISO']   : null,
   ];
 }
 
