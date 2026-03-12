@@ -104,11 +104,11 @@
         <div class="flex border-b border-line">
           <button id="btnTabLogin"
             class="flex-1 py-3.5 text-sm font-semibold text-ink border-b-2 border-ink transition-colors">
-            Accedi
+            🔐 Accedi
           </button>
           <button id="btnTabRegister"
             class="flex-1 py-3.5 text-sm font-medium text-muted border-b-2 border-transparent hover:text-ink transition-colors">
-            Registrati
+            📝 Registrati
           </button>
         </div>
 
@@ -215,14 +215,14 @@
 
         <div class="p-4 space-y-4 overflow-auto flex-1">
           <div class="flex flex-col gap-2">
-            <button id="btnNavPlansMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm">Piani</button>
-            <button id="btnNavSettingsMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">Impostazioni</button>
+            <button id="btnNavPlansMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm">🗓️ Piani</button>
+            <button id="btnNavSettingsMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">⚙️ Impostazioni</button>
             <button id="btnNavSuperadminMobile" class="hidden rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">🔧 Pannello Sistema</button>
           </div>
 
           <div class="rounded-3xl border border-line bg-white p-4 shadow-warm">
             <div class="flex items-center justify-between mb-3">
-              <div class="font-semibold text-sm text-ink">Piani salvati</div>
+              <div class="font-semibold text-sm text-ink">📂 Piani salvati</div>
               <span class="text-xs text-muted bg-surface px-2 py-0.5 rounded-full border border-line"><span id="savedCountMobile">0</span></span>
             </div>
             <input id="savedSearchMobile"
@@ -271,8 +271,8 @@
       <aside id="mainSidebar" class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
         <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
           <div class="flex flex-col gap-2">
-            <button id="btnNavPlans" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90">Piani</button>
-            <button id="btnNavSettings" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors">Impostazioni</button>
+            <button id="btnNavPlans" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90">🗓️ Piani</button>
+            <button id="btnNavSettings" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors">⚙️ Impostazioni</button>
             <button id="btnNavSuperadmin" class="hidden rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors">🔧 Pannello Sistema</button>
           </div>
           <button id="btnLogout" class="mt-3 w-full rounded-2xl border border-line py-2.5 hover:bg-surface text-muted text-sm transition-colors">Esci</button>
@@ -280,7 +280,7 @@
 
         <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
           <div class="flex items-center justify-between mb-3">
-            <div class="font-semibold text-sm text-ink">Piani salvati</div>
+            <div class="font-semibold text-sm text-ink">📂 Piani salvati</div>
             <span class="text-xs text-muted bg-surface px-2 py-0.5 rounded-full border border-line"><span id="savedCount">0</span></span>
           </div>
           <input id="savedSearch"
@@ -312,7 +312,7 @@
             <div class="flex items-center gap-3 mb-1">
               <span class="text-2xl">🔧</span>
               <div>
-                <div class="text-xl font-bold text-ink">Pannello di Sistema</div>
+                <div class="text-xl font-bold text-ink">🔧 Pannello di Sistema</div>
                 <div class="text-xs text-muted mt-0.5">Gestione globale di tutti i gruppi e utenti</div>
               </div>
             </div>
@@ -321,7 +321,7 @@
           <!-- LISTA GRUPPI -->
           <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
             <div class="flex items-center justify-between gap-3 mb-4">
-              <div class="text-sm font-bold text-ink">Gruppi esistenti</div>
+              <div class="text-sm font-bold text-ink">🏢 Gruppi esistenti</div>
               <button onclick="renderSuperadminDashboard()"
                 class="rounded-2xl border border-line px-3 py-1.5 text-xs text-muted hover:bg-surface transition-colors">
                 ↺ Aggiorna
@@ -334,7 +334,7 @@
 
           <!-- CREA NUOVO GRUPPO -->
           <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
-            <div class="text-sm font-bold text-ink mb-1">Crea nuovo gruppo</div>
+            <div class="text-sm font-bold text-ink mb-1">➕ Crea nuovo gruppo</div>
             <div class="text-xs text-muted mb-4">Crea un gruppo assegnandogli subito il primo admin.</div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input id="newGroupName"
@@ -418,7 +418,7 @@
           <div id="adminControls" class="hidden rounded-3xl border border-line bg-white p-5 shadow-warm">
             <div class="flex flex-wrap items-end gap-3 justify-between">
               <div class="min-w-[200px]">
-                <div class="text-sm font-bold text-ink">Genera piano</div>
+                <div class="text-sm font-bold text-ink">✨ Genera piano</div>
                 <div class="text-xs text-muted mt-1">Seleziona il lunedì di partenza e il numero di settimane.</div>
                 <div id="seasonNote" class="text-xs text-accent2 mt-1 font-medium"></div>
               </div>
@@ -452,7 +452,7 @@
           <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
             <div class="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div class="text-sm font-bold text-ink">Piano corrente</div>
+                <div class="text-sm font-bold text-ink">📅 Piano corrente</div>
                 <div id="currentLabel" class="text-xs text-muted mt-1">—</div>
               </div>
               <div class="flex items-center gap-2 flex-wrap">
@@ -474,7 +474,7 @@
             <button id="settingsRulesToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>⚙️</span>
-                <div class="text-sm font-bold text-ink">Impostazioni gruppo</div>
+                <div class="text-sm font-bold text-ink">⚙️ Impostazioni gruppo</div>
               </div>
               <div id="settingsRulesIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -556,14 +556,14 @@
               </div>
 
               <div class="mt-4 rounded-3xl border border-line bg-surface/50 p-4">
-                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Riepilogo regole</div>
+                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">📝 Riepilogo regole</div>
                 <div id="settingsSummary" class="text-sm text-ink whitespace-pre-wrap">—</div>
                 <div id="settingsStatus" class="text-xs text-muted mt-2 min-h-[16px]">—</div>
               </div>
 
               <!-- Codice invito (solo admin) -->
               <div id="inviteCodeSection" class="hidden mt-4 rounded-3xl border border-accent/30 bg-accent/5 p-4">
-                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-3">Codice invito gruppo</div>
+                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-3">🎫 Codice invito gruppo</div>
                 <div class="flex items-center gap-3 flex-wrap">
                   <div class="flex-1 min-w-[160px] rounded-2xl border border-line bg-white px-4 py-2.5 font-mono text-lg font-bold text-ink tracking-[0.2em]" id="inviteCodeDisplay">—</div>
                   <button id="btnCopyInviteCode"
@@ -586,7 +586,7 @@
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
                   <span>📄</span>
-                  <div class="text-sm font-bold text-ink">Piano Alimentare</div>
+                  <div class="text-sm font-bold text-ink">🍽️ Piano Alimentare</div>
                 </div>
                 <div id="csvCurrentStatus" class="text-xs text-muted mt-1">—</div>
               </div>
@@ -617,7 +617,7 @@
           <div id="csvViewSection" class="hidden rounded-3xl border border-line bg-white p-5 shadow-warm">
             <div class="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div class="text-sm font-bold text-ink">Piano Alimentare</div>
+                <div class="text-sm font-bold text-ink">🍽️ Piano Alimentare</div>
                 <div id="csvCurrentStatusUser" class="text-xs text-muted mt-1">—</div>
               </div>
               <a href="csv_viewer.php" target="_blank"
@@ -632,7 +632,7 @@
             <button id="usersAccordionToggle" class="w-full flex items-center justify-between gap-3">
               <div class="flex items-center gap-2">
                 <span>👥</span>
-                <div class="text-sm font-bold text-ink">Gestione utenti</div>
+                <div class="text-sm font-bold text-ink">👥 Gestione utenti</div>
               </div>
               <div id="usersAccordionIcon" class="transition-transform text-muted text-sm">▾</div>
             </button>
@@ -674,7 +674,7 @@
             <button id="cpToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>🔑</span>
-                <div class="text-sm font-bold text-ink">Cambia password</div>
+                <div class="text-sm font-bold text-ink">🔑 Cambia password</div>
               </div>
               <div id="cpIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -707,7 +707,7 @@
             <button id="statsToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>📊</span>
-                <div class="text-sm font-bold text-ink">Statistiche pasti</div>
+                <div class="text-sm font-bold text-ink">📊 Statistiche pasti</div>
               </div>
               <div id="statsIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -721,7 +721,7 @@
             <button id="logToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>📋</span>
-                <div class="text-sm font-bold text-ink">Log attività</div>
+                <div class="text-sm font-bold text-ink">📋 Log attività</div>
               </div>
               <div id="logIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -735,7 +735,7 @@
             <button id="backupToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>💾</span>
-                <div class="text-sm font-bold text-ink">Backup e ripristino</div>
+                <div class="text-sm font-bold text-ink">💾 Backup e ripristino</div>
               </div>
               <div id="backupIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -744,7 +744,7 @@
 
               <!-- Scarica backup -->
               <div class="rounded-3xl border border-line bg-surface/60 p-4">
-                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-3">Esporta backup</div>
+                <div class="text-[11px] font-semibold text-muted uppercase tracking-wider mb-3">📤 Esporta backup</div>
                 <button id="btnDownloadBackup"
                   class="rounded-2xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
                   Scarica backup
@@ -754,7 +754,7 @@
 
               <!-- Ripristina -->
               <div class="rounded-3xl border border-danger/20 bg-danger/5 p-4">
-                <div class="text-[11px] font-semibold text-danger uppercase tracking-wider mb-3">Ripristina da backup</div>
+                <div class="text-[11px] font-semibold text-danger uppercase tracking-wider mb-3">📥 Ripristina da backup</div>
                 <input id="restoreFile" type="file" accept=".json"
                   class="block w-full text-sm text-muted file:mr-3 file:rounded-xl file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-xs file:text-ink file:cursor-pointer mb-3"/>
                 <button id="btnRestoreBackup"
