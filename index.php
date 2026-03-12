@@ -312,7 +312,7 @@
             <div class="flex items-center gap-3 mb-1">
               <span class="text-2xl">🔧</span>
               <div>
-                <div class="text-xl font-bold text-ink">🔧 Pannello di Sistema</div>
+                <div class="text-xl font-bold text-ink">Pannello di Sistema</div>
                 <div class="text-xs text-muted mt-0.5">Gestione globale di tutti i gruppi e utenti</div>
               </div>
             </div>
@@ -474,7 +474,7 @@
             <button id="settingsRulesToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>⚙️</span>
-                <div class="text-sm font-bold text-ink">⚙️ Impostazioni gruppo</div>
+                <div class="text-sm font-bold text-ink">Impostazioni gruppo</div>
               </div>
               <div id="settingsRulesIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -585,8 +585,8 @@
             <button id="csvSettingsToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                  <span>📄</span>
-                  <div class="text-sm font-bold text-ink">🍽️ Piano Alimentare</div>
+                  <span>🍽️</span>
+                  <div class="text-sm font-bold text-ink">Piano Alimentare</div>
                 </div>
                 <div id="csvCurrentStatus" class="text-xs text-muted mt-1">—</div>
               </div>
@@ -632,7 +632,7 @@
             <button id="usersAccordionToggle" class="w-full flex items-center justify-between gap-3">
               <div class="flex items-center gap-2">
                 <span>👥</span>
-                <div class="text-sm font-bold text-ink">👥 Gestione utenti</div>
+                <div class="text-sm font-bold text-ink">Gestione utenti</div>
               </div>
               <div id="usersAccordionIcon" class="transition-transform text-muted text-sm">▾</div>
             </button>
@@ -674,7 +674,7 @@
             <button id="cpToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>🔑</span>
-                <div class="text-sm font-bold text-ink">🔑 Cambia password</div>
+                <div class="text-sm font-bold text-ink">Cambia password</div>
               </div>
               <div id="cpIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -707,7 +707,7 @@
             <button id="statsToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>📊</span>
-                <div class="text-sm font-bold text-ink">📊 Statistiche pasti</div>
+                <div class="text-sm font-bold text-ink">Statistiche pasti</div>
               </div>
               <div id="statsIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -721,7 +721,7 @@
             <button id="logToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>📋</span>
-                <div class="text-sm font-bold text-ink">📋 Log attività</div>
+                <div class="text-sm font-bold text-ink">Log attività</div>
               </div>
               <div id="logIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
@@ -735,7 +735,7 @@
             <button id="backupToggle" class="w-full flex items-center justify-between gap-3 p-5 text-left">
               <div class="flex items-center gap-2">
                 <span>💾</span>
-                <div class="text-sm font-bold text-ink">💾 Backup e ripristino</div>
+                <div class="text-sm font-bold text-ink">Backup e ripristino</div>
               </div>
               <div id="backupIcon" class="transition-transform text-muted text-sm shrink-0">▾</div>
             </button>
