@@ -1308,6 +1308,7 @@ function renderPlan(){
     if($("currentLabel")) $("currentLabel").textContent = "—";
     tabs.innerHTML = "";
     content.innerHTML = `<div class="text-sm text-muted">Seleziona un piano salvato o genera un nuovo piano (admin).</div>`;
+    renderTodayBanner();
     return;
   }
 
