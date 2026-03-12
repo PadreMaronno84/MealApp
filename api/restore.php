@@ -5,7 +5,7 @@ require __DIR__ . '/common.php';
 $me = require_admin();
 verify_csrf();
 
-$group = safe_name((string)($me['group'] ?? ''));
+$group = get_effective_group($me);
 $base  = storage_base();
 
 // Accetta sia upload file sia JSON body

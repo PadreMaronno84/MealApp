@@ -4,7 +4,7 @@
 require __DIR__ . '/common.php';
 $me = require_admin();
 
-$group = safe_name((string)($me['group'] ?? ''));
+$group = get_effective_group($me);
 $base  = storage_base();
 
 // Raccolta piani

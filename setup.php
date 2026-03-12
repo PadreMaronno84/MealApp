@@ -13,19 +13,21 @@ if (file_exists($usersFile)) {
   exit;
 }
 
-$admin = [
-  'username'      => 'admin',
+// Superadmin di sistema (non appartiene a nessun gruppo)
+$superadmin = [
+  'username'      => 'superadmin',
   'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
-  'role'          => 'admin',
-  'group'         => 'A',
+  'role'          => 'superadmin',
+  'group'         => null,
 ];
 
-$ok = file_put_contents($usersFile, json_encode(['users' => [$admin]], JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
+$ok = file_put_contents($usersFile, json_encode(['users' => [$superadmin]], JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
 if ($ok === false) {
   echo "ERRORE: impossibile scrivere $usersFile\n";
   exit(1);
 }
 
 echo "Creato: $usersFile\n";
-echo "Utente: admin / admin123 / gruppo A\n";
+echo "Superadmin: superadmin / admin123\n";
 echo "IMPORTANTE: cambia la password dopo il primo accesso!\n";
+echo "Dal pannello di sistema puoi creare i tuoi gruppi e i loro admin.\n";

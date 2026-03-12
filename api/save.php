@@ -58,12 +58,12 @@ $file = $dir . '/' . $id . '.json';
 $data['id'] = $id;
 $data['createdAt'] = (new DateTime())->format(DateTime::ATOM);
 $data['createdBy'] = $me['username'];
-$data['group'] = $me['group'];
+$data['group'] = get_effective_group($me);
 
 $raw = json_encode($data, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
 if (@file_put_contents($file, $raw) === false) json_out(['ok'=>false,'error'=>'write_failed'], 500);
 
-log_activity($me['group'], $me['username'], 'piano_salvato', [
+log_activity(get_effective_group($me), $me['username'], 'piano_salvato', [
   'id' => $id, 'label' => $data['displayLabel'] ?? '',
   'start' => $rNew['startISO'], 'end' => $rNew['endISO'],
 ]);

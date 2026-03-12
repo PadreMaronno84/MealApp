@@ -11,24 +11,27 @@ if (strtolower($target) === strtolower((string)$me['username'])) {
   json_out(['ok'=>false,'error'=>'cannot_delete_self'], 400);
 }
 
-$group = safe_name((string)$me['group']);
+$isSuperAdmin = ($me['role'] ?? '') === 'superadmin';
+$group = get_effective_group($me);
 $users = load_users();
 
 $found = false;
-$new = [];
-$adminsLeft = 0;
+$new   = [];
+$targetGroup = null;
 
 foreach ($users as $u) {
-  $uName = (string)($u['username'] ?? '');
+  $uName  = (string)($u['username'] ?? '');
   $uGroup = safe_name((string)($u['group'] ?? ''));
 
-  if ($uGroup !== $group) {
+  // Admin: può eliminare solo nel proprio gruppo
+  if (!$isSuperAdmin && $uGroup !== $group) {
     $new[] = $u;
     continue;
   }
 
   if (strtolower($uName) === strtolower($target)) {
-    $found = true;
+    $found       = true;
+    $targetGroup = $uGroup;
     // skip = delete
     continue;
   }
@@ -38,12 +41,17 @@ foreach ($users as $u) {
 
 if (!$found) json_out(['ok'=>false,'error'=>'not_found'], 404);
 
-// ricontrollo admin rimasti nel gruppo
-foreach ($new as $u) {
-  if (safe_name((string)($u['group'] ?? '')) !== $group) continue;
-  if ((string)($u['role'] ?? 'user') === 'admin') $adminsLeft++;
+// Admin normale: deve restare almeno un admin nel gruppo
+if (!$isSuperAdmin) {
+  $adminsLeft = 0;
+  foreach ($new as $u) {
+    if (safe_name((string)($u['group'] ?? '')) !== $group) continue;
+    if ((string)($u['role'] ?? 'user') === 'admin') $adminsLeft++;
+  }
+  if ($adminsLeft < 1) json_out(['ok'=>false,'error'=>'must_keep_one_admin'], 400);
 }
-if ($adminsLeft < 1) json_out(['ok'=>false,'error'=>'must_keep_one_admin'], 400);
+
+$group = $targetGroup ?? $group; // usa il gruppo dell'utente eliminato per il log
 
 save_users($new);
 log_activity($group, $me['username'], 'utente_eliminato', ['username' => $target]);

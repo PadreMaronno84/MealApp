@@ -84,7 +84,7 @@ if ($mode === 'append' && is_file($dest)) {
 
   if (!write_pairs_csv($dest, $existing)) json_out(['ok'=>false,'error'=>'write_failed'], 500);
 
-  log_activity($me['group'], $me['username'], 'piano_alimentare_aggiunto', [
+  log_activity(get_effective_group($me), $me['username'], 'piano_alimentare_aggiunto', [
     'filename' => $name, 'added' => $added, 'total' => count($existing)
   ]);
   json_out(['ok'=>true, 'mode'=>'append', 'added'=>$added, 'total'=>count($existing)]);
@@ -94,7 +94,7 @@ if ($mode === 'append' && is_file($dest)) {
   if (!move_uploaded_file($tmp, $dest)) json_out(['ok'=>false,'error'=>'move_failed'], 500);
 
   $total = count(parse_pairs_csv($dest));
-  log_activity($me['group'], $me['username'], 'piano_alimentare_sostituito', [
+  log_activity(get_effective_group($me), $me['username'], 'piano_alimentare_sostituito', [
     'filename' => $name, 'total' => $total
   ]);
   json_out(['ok'=>true, 'mode'=>'replace', 'total'=>$total]);

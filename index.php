@@ -218,10 +218,11 @@
           <button id="btnCloseSidebar" class="relative rounded-2xl border border-white/20 px-3 py-2 hover:bg-white/10 text-white/70 transition-colors shrink-0">✕</button>
         </div>
 
-        <div class="p-4 space-y-4 overflow-auto flex-1">
+        <div id="sidebarDrawerInner" class="p-4 space-y-4 overflow-auto flex-1">
           <div class="flex flex-col gap-2">
             <button id="btnNavPlansMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm">Piani</button>
             <button id="btnNavSettingsMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">Impostazioni</button>
+            <button id="btnNavSuperadminMobile" class="hidden rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">🔧 Pannello Sistema</button>
           </div>
 
           <div class="rounded-3xl border border-line bg-white p-4 shadow-warm">
@@ -272,11 +273,12 @@
     <div class="max-w-7xl mx-auto p-4 lg:p-6 grid grid-cols-12 gap-4 lg:gap-6">
 
       <!-- SIDEBAR (solo desktop) -->
-      <aside class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
+      <aside id="mainSidebar" class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
         <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
           <div class="flex flex-col gap-2">
             <button id="btnNavPlans" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90">Piani</button>
             <button id="btnNavSettings" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors">Impostazioni</button>
+            <button id="btnNavSuperadmin" class="hidden rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors">🔧 Pannello Sistema</button>
           </div>
           <button id="btnLogout" class="mt-3 w-full rounded-2xl border border-line py-2.5 hover:bg-surface text-muted text-sm transition-colors">Esci</button>
         </div>
@@ -295,6 +297,80 @@
 
       <!-- MAIN -->
       <main class="col-span-12 lg:col-span-8 xl:col-span-9">
+
+        <!-- BANNER SUPERADMIN: stai gestendo gruppo X -->
+        <div id="groupSwitcherBanner" class="hidden mb-4 rounded-3xl border border-accent2/40 bg-accent2/10 px-5 py-3 flex items-center justify-between gap-3 shadow-warm">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-base shrink-0">🔧</span>
+            <div class="text-sm font-semibold text-ink">Stai gestendo: <span id="activeGroupLabel" class="font-bold">—</span></div>
+          </div>
+          <button onclick="exitGroupManagement()"
+            class="shrink-0 rounded-2xl border border-line bg-white hover:bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors">
+            ← Torna ai gruppi
+          </button>
+        </div>
+
+        <!-- VIEW: PANNELLO SUPERADMIN -->
+        <div id="superadminView" class="hidden space-y-6">
+
+          <div class="rounded-3xl border border-line bg-white p-6 shadow-warm">
+            <div class="flex items-center gap-3 mb-1">
+              <span class="text-2xl">🔧</span>
+              <div>
+                <div class="text-xl font-bold text-ink">Pannello di Sistema</div>
+                <div class="text-xs text-muted mt-0.5">Gestione globale di tutti i gruppi e utenti</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LISTA GRUPPI -->
+          <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
+            <div class="flex items-center justify-between gap-3 mb-4">
+              <div class="text-sm font-bold text-ink">Gruppi esistenti</div>
+              <button onclick="renderSuperadminDashboard()"
+                class="rounded-2xl border border-line px-3 py-1.5 text-xs text-muted hover:bg-surface transition-colors">
+                ↺ Aggiorna
+              </button>
+            </div>
+            <div id="superadminGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div class="text-sm text-muted">Caricamento…</div>
+            </div>
+          </div>
+
+          <!-- CREA NUOVO GRUPPO -->
+          <div class="rounded-3xl border border-line bg-white p-5 shadow-warm">
+            <div class="text-sm font-bold text-ink mb-1">Crea nuovo gruppo</div>
+            <div class="text-xs text-muted mb-4">Crea un gruppo assegnandogli subito il primo admin.</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input id="newGroupName"
+                class="rounded-2xl border border-line px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/40 bg-surface/50 text-ink placeholder:text-muted uppercase"
+                placeholder="Nome gruppo (es. A)"
+                oninput="this.value=this.value.toUpperCase()"/>
+              <input id="newGroupAdminUser"
+                class="rounded-2xl border border-line px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/40 bg-surface/50 text-ink placeholder:text-muted"
+                placeholder="Username admin"/>
+              <input id="newGroupAdminPass" type="password"
+                class="rounded-2xl border border-line px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/40 bg-surface/50 text-ink placeholder:text-muted"
+                placeholder="Password admin"/>
+            </div>
+            <div class="mt-3 flex items-center gap-3 flex-wrap">
+              <button onclick="createGroup()"
+                class="rounded-2xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
+                Crea gruppo
+              </button>
+              <div id="createGroupStatus" class="text-xs text-muted min-h-[16px]">—</div>
+            </div>
+          </div>
+
+          <!-- LOGOUT -->
+          <div class="flex justify-end">
+            <button onclick="logout()"
+              class="rounded-2xl border border-line px-4 py-2.5 text-sm text-muted hover:bg-surface transition-colors">
+              Esci
+            </button>
+          </div>
+
+        </div>
 
         <!-- VIEW: PIANI -->
         <div id="plansView" class="space-y-4">

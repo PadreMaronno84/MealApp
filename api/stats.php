@@ -4,7 +4,7 @@
 require __DIR__ . '/common.php';
 $me = require_login();
 
-$group = safe_name((string)($me['group'] ?? ''));
+$group = get_effective_group($me);
 
 // Legge eventuale timestamp di reset dalle impostazioni gruppo
 $settingsPath = storage_base() . '/settings/' . $group . '.json';

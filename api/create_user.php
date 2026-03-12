@@ -10,6 +10,11 @@ $role = (string)($data['role'] ?? 'user');
 
 if ($username === '') json_out(['ok'=>false,'error'=>'bad_username'], 400);
 if (strlen($password) < 8) json_out(['ok'=>false,'error'=>'password_too_short'], 400);
+
+// Solo il superadmin può creare utenti admin
+if ($role === 'admin' && ($me['role'] ?? '') !== 'superadmin') {
+  json_out(['ok'=>false,'error'=>'forbidden_role'], 403);
+}
 if ($role !== 'user' && $role !== 'admin') $role = 'user';
 
 $users = load_users();
@@ -21,7 +26,12 @@ foreach ($users as $u) {
   }
 }
 
-$group = safe_name((string)$me['group']);
+// Superadmin può specificare il gruppo nel corpo della richiesta
+if (($me['role'] ?? '') === 'superadmin' && !empty($data['group'])) {
+  $group = safe_name((string)$data['group']);
+} else {
+  $group = get_effective_group($me);
+}
 
 $users[] = [
   'username' => $username,

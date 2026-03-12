@@ -3,8 +3,7 @@ require __DIR__ . '/common.php';
 
 $me = require_admin();
 verify_csrf();
-$group = safe_name((string)($me['group'] ?? ''));
-if ($group === '') json_out(['ok'=>false,'error'=>'missing_group']);
+$group = get_effective_group($me);
 
 $payload = read_json_body();
 $settings = $payload['settings'] ?? null;

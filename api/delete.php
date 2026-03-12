@@ -13,5 +13,5 @@ $file = $dir . '/' . $id . '.json';
 if (!is_file($file)) json_out(['ok'=>false,'error'=>'not_found'], 404);
 
 @unlink($file);
-log_activity($me['group'], $me['username'], 'piano_eliminato', ['id' => $id]);
+log_activity(get_effective_group($me), $me['username'], 'piano_eliminato', ['id' => $id]);
 json_out(['ok'=>true]);

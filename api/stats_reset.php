@@ -5,7 +5,7 @@ require __DIR__ . '/common.php';
 $me = require_admin();
 verify_csrf();
 
-$group = safe_name((string)($me['group'] ?? ''));
+$group = get_effective_group($me);
 $dir   = storage_base() . '/settings';
 if (!is_dir($dir)) @mkdir($dir, 0775, true);
 $path  = $dir . '/' . $group . '.json';

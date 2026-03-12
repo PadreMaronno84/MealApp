@@ -279,6 +279,10 @@ const state = {
   dirty: false
 };
 
+// Helper ruoli
+function isAdminOrAbove(){ return state.me?.role === "admin" || state.me?.role === "superadmin"; }
+function isSuperAdmin(){ return state.me?.role === "superadmin"; }
+
 /* =========================
    AUTH
    ========================= */
@@ -472,7 +476,7 @@ function renderSettings(){
   const pizza = r.pizza || {};
   const free = r.freeMeal || {};
 
-  const isAdmin = state.me?.role === "admin";
+  const isAdmin = isAdminOrAbove();
 
   if($("pizzaEnabled")) $("pizzaEnabled").checked = !!pizza.enabled;
   if($("pizzaDay")) $("pizzaDay").value = String(Number.isFinite(pizza.dayIndex)?pizza.dayIndex:5);
@@ -501,7 +505,7 @@ function renderSettings(){
   if($("settingsSummary")) $("settingsSummary").textContent = rulesSummaryText();
   if($("settingsStatus")) $("settingsStatus").textContent = "—";
 
-  // Codice invito (solo admin)
+  // Codice invito (solo admin/superadmin)
   const inviteSection = $("inviteCodeSection");
   const inviteDisplay = $("inviteCodeDisplay");
   if(inviteSection) show(inviteSection, isAdmin);
@@ -509,10 +513,17 @@ function renderSettings(){
     inviteDisplay.textContent = s.invite_code || "—";
   }
 
+  // Selettore ruolo nella creazione utente: solo superadmin può creare admin
+  const roleSelect = $("newUserRole");
+  if(roleSelect){
+    const adminOpt = roleSelect.querySelector('option[value="admin"]');
+    if(adminOpt) adminOpt.hidden = !isSuperAdmin();
+  }
+
   renderCsvStatus();
 }
 async function saveSettings(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
 
   const s = getSettings();
   s.rules = s.rules || {};
@@ -563,8 +574,15 @@ async function saveSettings(){
 function setView(view){
   state.view = view;
 
-  show($("plansView"), view === "plans");
+  // Nasconde tutto, poi mostra solo la view attiva
+  show($("plansView"),    view === "plans");
   show($("settingsView"), view === "settings");
+  show($("superadminView"), view === "superadmin");
+
+  // Nasconde sidebar/nav se siamo nel pannello superadmin senza gruppo attivo
+  const hideSidebar = view === "superadmin";
+  show($("mainSidebar"),      !hideSidebar);
+  show($("sidebarDrawerInner"), !hideSidebar);
 
   const setBtn = (idPlans, idSet)=>{
     const bp = $(idPlans), bs = $(idSet);
@@ -581,9 +599,7 @@ function setView(view){
   setBtn("btnNavPlans","btnNavSettings");
   setBtn("btnNavPlansMobile","btnNavSettingsMobile");
 
-  if(view === "settings"){
-    renderSettings();
-  }
+  if(view === "settings") renderSettings();
 }
 
 /* =========================
@@ -604,7 +620,7 @@ async function loadSaved(){
   renderSavedLists();
 }
 async function loadGroupUsers(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
   const j = await apiGet("api/group_users.php");
   renderUsers(j.ok ? (j.items||[]) : []);
 }
@@ -716,7 +732,7 @@ async function uploadCsv(inputId, statusId){
 }
 
 async function createUser(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
 
   const un = ($("newUserName")?.value || "").trim();
   const pw = ($("newUserPass")?.value || "");
@@ -730,9 +746,10 @@ async function createUser(){
 
   if(!j.ok){
     let msg = j.error || "errore";
-    if(msg==="bad_username") msg="Username non valido";
+    if(msg==="bad_username")     msg="Username non valido";
     if(msg==="password_too_short") msg="Password troppo corta (min 8 caratteri)";
-    if(msg==="username_exists") msg="Username già esistente";
+    if(msg==="username_exists")  msg="Username già esistente";
+    if(msg==="forbidden_role")   msg="Solo il superadmin può creare utenti admin";
     if(status) status.textContent = "Errore: " + msg;
     toast("err", msg);
     return;
@@ -795,7 +812,7 @@ function applyAlwaysOnRules(dayIndex, dayObj){
 }
 
 function generatePlan(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
   if(!state.pool.length){ toast("warn","Pool vuoto: carica CSV"); return; }
 
   const start = $("startMonday")?.value;
@@ -859,7 +876,7 @@ function generatePlan(){
 }
 
 async function savePlan(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
   if(!state.plan){ toast("warn","Nessun piano da salvare"); return; }
 
   state.plan.id = "";
@@ -905,7 +922,7 @@ function clearView(){
 }
 
 async function removeWeek(weekIndex){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
   if(!state.plan?.id){ toast("warn","Salva il piano prima di rimuovere settimane"); return; }
   if((state.plan.weeks?.length || 0) <= 1){ toast("warn","Non puoi rimuovere l'unica settimana"); return; }
 
@@ -1066,7 +1083,7 @@ function printPlan(){
    EDIT DAY: picker pranzo+cena (solo admin)
    ========================= */
 function openMealPicker(weekIndex, dayIndex){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
   if(!state.plan?.weeks?.[weekIndex]?.days?.[dayIndex]) return;
 
   const pool = state.pool || [];
@@ -1173,7 +1190,7 @@ function renderSavedLists(){
 
       row.appendChild(btn);
 
-      if(state.me?.role === "admin"){
+      if(isAdminOrAbove()){
         const del = document.createElement("button");
         del.type = "button";
         del.className = "shrink-0 rounded-2xl border border-line bg-white hover:bg-danger/10 px-3 py-3 text-danger transition-colors";
@@ -1241,7 +1258,7 @@ function renderUsers(items){
     const right = document.createElement("div");
     right.className = "flex items-center gap-2";
 
-    if(state.me?.role === "admin"){
+    if(isAdminOrAbove()){
       const del = document.createElement("button");
       del.type = "button";
       del.className = "rounded-2xl border border-line px-3 py-2 hover:bg-danger/10 text-danger transition-colors";
@@ -1263,7 +1280,7 @@ function renderPlan(){
   const tabs = $("weekTabs");
   if(!content || !tabs) return;
 
-  const isAdmin = state.me?.role === "admin";
+  const isAdmin = isAdminOrAbove();
 
   if(!state.plan){
     if($("currentLabel")) $("currentLabel").textContent = "—";
@@ -1478,7 +1495,7 @@ async function loadStats(){
   const content = $("statsContent");
   if(!content) return;
 
-  const isAdmin = state.me?.role === "admin";
+  const isAdmin = isAdminOrAbove();
 
   content.innerHTML = `<div class="text-sm text-muted text-center py-6">Caricamento…</div>`;
 
@@ -1648,7 +1665,7 @@ async function loadLog(){
    AVVISO PIANO IN SCADENZA
    ========================= */
 function checkPlanExpiry(){
-  if(state.me?.role !== "admin") return;
+  if(!isAdminOrAbove()) return;
 
   const banner  = $("expiryBanner");
   const msg     = $("expiryMsg");
@@ -1772,81 +1789,212 @@ async function restoreBackup(){
 /* =========================
    BOOT
    ========================= */
-   async function boot(){
-    let me = null;
-  
-    try{
-      me = await refreshMe();
-    }catch(err){
-      console.error("refreshMe failed", err);
-    }
-  
-    show($("loginSection"), !me);
-    show($("appSection"), !!me);
-    if(!me) return;
-  
-    const whoText = `${me.username} • ${me.role} • gruppo: ${me.group}`;
-    if($("whoami")) $("whoami").textContent = whoText;
-    if($("whoamiDesktop")) $("whoamiDesktop").textContent = whoText;
-    if($("whoamiMobile")) $("whoamiMobile").textContent = whoText;
-  
-    const isAdmin = me.role === "admin";
-    show($("csvSettingsSection"), isAdmin);
-    show($("csvViewSection"), !isAdmin);
-    show($("adminControls"), isAdmin);
-    show($("logSection"), isAdmin);
-    show($("backupSection"), isAdmin);
-  
-    if(isAdmin && $("startMonday")){
-      const now = new Date();
-      const day = now.getDay(); // 0=dom
-      const diffToMon = (day===0) ? 1 : (8 - day);
-      const nextMon = addDays(now, diffToMon);
-      $("startMonday").value = fmtISO(nextMon);
-    }
-  
-    loading(true, "Avvio", "Carico dati…");
-  
-    try{
-      await loadSettings();
-      await loadPairs();
-      await loadSaved();
-      if(isAdmin) await loadGroupUsers();
+async function boot(){
+  let me = null;
+  try{ me = await refreshMe(); }catch(err){ console.error("refreshMe failed", err); }
 
-      // Auto-load piano attivo (copre la data di oggi)
-      const todayISO   = fmtISO(new Date());
-      const activeMeta = state.saved.find(it =>
-        it.startISO && it.endISO &&
-        it.startISO <= todayISO && todayISO <= it.endISO
-      );
-      if(activeMeta){
-        try{
-          const plan  = await apiGet("api/load.php?id=" + encodeURIComponent(activeMeta.id));
-          state.plan  = plan;
-          state.dirty = false;
-          // Trova la settimana che contiene oggi
-          if(plan.weeks){
-            for(let i = 0; i < plan.weeks.length; i++){
-              const ws  = new Date(plan.weeks[i].weekStartISO + "T00:00:00");
-              const we  = addDays(ws, 6);
-              const tod = new Date(todayISO + "T00:00:00");
-              if(tod >= ws && tod <= we){ state.activeWeek = i; break; }
-            }
-          }
-        }catch(e){ console.warn("Auto-load piano attivo fallito", e); }
-      }
-    }catch(err){
-      console.error("BOOT load failed:", err);
-      toast("err", "Errore avvio: " + (err?.message || err));
-    }finally{
-      loading(false);
-    }
+  show($("loginSection"), !me);
+  show($("appSection"), !!me);
+  if(!me) return;
 
-    setView(state.view || "plans");
-    renderSettings();
-    renderPlan();
-    checkPlanExpiry();
+  // Superadmin senza gruppo attivo → mostra solo il pannello di sistema
+  if(me.role === "superadmin" && !me.active_group){
+    updateWhoami(me, null);
+    show($("groupSwitcherBanner"), false);
+    setView("superadmin");
+    await renderSuperadminDashboard();
+    return;
   }
+
+  await bootNormal(me);
+}
+
+function updateWhoami(me, activeGroup){
+  let whoText;
+  if(me.role === "superadmin"){
+    whoText = activeGroup
+      ? `${me.username} • superadmin • gestione: Gruppo ${activeGroup}`
+      : `${me.username} • superadmin`;
+  } else {
+    whoText = `${me.username} • ${me.role} • gruppo: ${me.group}`;
+  }
+  if($("whoami")) $("whoami").textContent = whoText;
+  if($("whoamiDesktop")) $("whoamiDesktop").textContent = whoText;
+  if($("whoamiMobile")) $("whoamiMobile").textContent = whoText;
+}
+
+async function bootNormal(me){
+  const activeGroup = me.active_group || me.group;
+  updateWhoami(me, activeGroup);
+
+  const isAdmin = isAdminOrAbove();
+  show($("csvSettingsSection"), isAdmin);
+  show($("csvViewSection"), !isAdmin);
+  show($("adminControls"), isAdmin);
+  show($("logSection"), isAdmin);
+  show($("backupSection"), isAdmin);
+
+  // Banner "stai gestendo gruppo X" visibile solo al superadmin quando ha un gruppo attivo
+  const banner = $("groupSwitcherBanner");
+  if(banner){
+    show(banner, isSuperAdmin());
+    const lbl = $("activeGroupLabel");
+    if(lbl) lbl.textContent = activeGroup || "";
+  }
+
+  // Pulsante "Pannello Sistema" visibile solo al superadmin
+  show($("btnNavSuperadmin"),       isSuperAdmin());
+  show($("btnNavSuperadminMobile"), isSuperAdmin());
+
+  if(isAdmin && $("startMonday")){
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMon = (day===0) ? 1 : (8 - day);
+    const nextMon = addDays(now, diffToMon);
+    $("startMonday").value = fmtISO(nextMon);
+  }
+
+  loading(true, "Avvio", "Carico dati…");
+
+  try{
+    await loadSettings();
+    await loadPairs();
+    await loadSaved();
+    if(isAdmin) await loadGroupUsers();
+
+    // Auto-load piano attivo (copre la data di oggi)
+    const todayISO   = fmtISO(new Date());
+    const activeMeta = state.saved.find(it =>
+      it.startISO && it.endISO &&
+      it.startISO <= todayISO && todayISO <= it.endISO
+    );
+    if(activeMeta){
+      try{
+        const plan  = await apiGet("api/load.php?id=" + encodeURIComponent(activeMeta.id));
+        state.plan  = plan;
+        state.dirty = false;
+        if(plan.weeks){
+          for(let i = 0; i < plan.weeks.length; i++){
+            const ws  = new Date(plan.weeks[i].weekStartISO + "T00:00:00");
+            const we  = addDays(ws, 6);
+            const tod = new Date(todayISO + "T00:00:00");
+            if(tod >= ws && tod <= we){ state.activeWeek = i; break; }
+          }
+        }
+      }catch(e){ console.warn("Auto-load piano attivo fallito", e); }
+    }
+  }catch(err){
+    console.error("BOOT load failed:", err);
+    toast("err", "Errore avvio: " + (err?.message || err));
+  }finally{
+    loading(false);
+  }
+
+  setView(state.view || "plans");
+  renderSettings();
+  renderPlan();
+  checkPlanExpiry();
+}
+
+/* =========================
+   SUPERADMIN DASHBOARD
+   ========================= */
+async function renderSuperadminDashboard(){
+  const content = $("superadminGroupsGrid");
+  if(!content) return;
+  content.innerHTML = `<div class="text-sm text-muted">Caricamento gruppi…</div>`;
+
+  let j;
+  try{ j = await apiGet("api/superadmin_groups.php"); }
+  catch(e){ content.innerHTML = `<div class="text-sm text-danger">Errore caricamento gruppi.</div>`; return; }
+
+  if(!j.ok || !j.groups?.length){
+    content.innerHTML = `<div class="text-sm text-muted">Nessun gruppo trovato. Crea il primo gruppo qui sotto.</div>`;
+    return;
+  }
+
+  content.innerHTML = j.groups.map(g => `
+    <div class="rounded-3xl border border-line bg-white p-5 shadow-warm flex flex-col gap-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🏷️</span>
+          <div class="font-bold text-ink">Gruppo ${escapeHtml(g.group)}</div>
+        </div>
+        <span class="text-[11px] px-2.5 py-1 rounded-full border ${g.plans > 0 ? 'bg-success/10 border-success/30 text-success' : 'bg-surface border-line text-muted'} font-semibold">
+          ${g.plans} ${g.plans === 1 ? 'piano' : 'piani'}
+        </span>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-muted">
+        <span>👤 ${g.admins} admin</span>
+        <span>•</span>
+        <span>👥 ${g.users} utenti</span>
+      </div>
+      <button
+        onclick="selectGroup('${escapeHtml(g.group)}')"
+        class="mt-1 rounded-2xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
+        Gestisci
+      </button>
+    </div>
+  `).join("");
+}
+
+async function selectGroup(groupName){
+  loading(true, "Cambio gruppo", `Carico Gruppo ${groupName}…`);
+  const j = await apiPost("api/set_active_group.php", {group: groupName});
+  loading(false);
+  if(!j.ok){ toast("err", j.error || "Errore selezione gruppo"); return; }
+  // Reboot nel contesto del gruppo selezionato
+  state.plan = null; state.saved = []; state.pool = []; state.dirty = false;
+  await boot();
+}
+
+async function exitGroupManagement(){
+  loading(true, "Pannello sistema", "Torno alla lista gruppi…");
+  const j = await apiPost("api/set_active_group.php", {group: ""});
+  loading(false);
+  if(!j.ok){ toast("err", "Errore uscita gruppo"); return; }
+  state.plan = null; state.saved = []; state.pool = []; state.dirty = false;
+  await boot();
+}
+
+async function createGroup(){
+  const groupName = ($("newGroupName")?.value || "").trim().toUpperCase();
+  const adminUser = ($("newGroupAdminUser")?.value || "").trim();
+  const adminPass = ($("newGroupAdminPass")?.value || "");
+  const status    = $("createGroupStatus");
+
+  if(!groupName){ if(status) status.textContent = "Inserisci il nome del gruppo"; return; }
+  if(!/^[A-Z0-9_\-]{1,20}$/.test(groupName)){ if(status) status.textContent = "Nome gruppo: solo lettere maiuscole, numeri, _ o - (max 20)"; return; }
+  if(!adminUser){ if(status) status.textContent = "Inserisci l'username dell'admin"; return; }
+  if(adminPass.length < 8){ if(status) status.textContent = "Password admin: min 8 caratteri"; return; }
+
+  if(status) status.textContent = "…";
+  loading(true, "Creo gruppo", `Creo Gruppo ${groupName}…`);
+  const j = await apiPost("api/create_user.php", {
+    username: adminUser,
+    password: adminPass,
+    role: "admin",
+    group: groupName
+  });
+  loading(false);
+
+  if(!j.ok){
+    let msg = j.error || "errore";
+    if(msg === "bad_username")     msg = "Username admin non valido";
+    if(msg === "password_too_short") msg = "Password troppo corta (min 8 caratteri)";
+    if(msg === "username_exists")  msg = "Username già in uso";
+    if(status) status.textContent = "Errore: " + msg;
+    toast("err", msg);
+    return;
+  }
+
+  toast("ok", `Gruppo ${groupName} creato. Admin: ${adminUser}`);
+  if($("newGroupName"))      $("newGroupName").value = "";
+  if($("newGroupAdminUser")) $("newGroupAdminUser").value = "";
+  if($("newGroupAdminPass")) $("newGroupAdminPass").value = "";
+  if(status) status.textContent = `Gruppo ${groupName} creato.`;
+  await renderSuperadminDashboard();
+}
 
 /* =========================
    EVENTS
@@ -1922,6 +2070,8 @@ if(btn){
   $("btnNavSettings")?.addEventListener("click", ()=>setView("settings"));
   $("btnNavPlansMobile")?.addEventListener("click", ()=>{ setView("plans"); closeDrawer(); });
   $("btnNavSettingsMobile")?.addEventListener("click", ()=>{ setView("settings"); closeDrawer(); });
+  $("btnNavSuperadmin")?.addEventListener("click", ()=>exitGroupManagement());
+  $("btnNavSuperadminMobile")?.addEventListener("click", ()=>{ exitGroupManagement(); closeDrawer(); });
 
   $("btnSaveSettings")?.addEventListener("click", saveSettings);
   $("btnChangePassword")?.addEventListener("click", changePassword);

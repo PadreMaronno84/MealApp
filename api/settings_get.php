@@ -2,8 +2,7 @@
 require __DIR__ . '/common.php';
 
 $me = require_login();
-$group = safe_name((string)($me['group'] ?? ''));
-if ($group === '') json_out(['ok'=>false,'error'=>'missing_group']);
+$group = get_effective_group($me);
 
 $dir = storage_base() . '/settings';
 if (!is_dir($dir)) @mkdir($dir, 0775, true);

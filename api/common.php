@@ -92,15 +92,36 @@ function require_login(): array {
 
 function require_admin(): array {
   $u = require_login();
-  if (($u['role'] ?? '') !== 'admin') json_out(['ok'=>false,'error'=>'forbidden'], 403);
+  $role = $u['role'] ?? '';
+  if ($role !== 'admin' && $role !== 'superadmin') json_out(['ok'=>false,'error'=>'forbidden'], 403);
   return $u;
+}
+
+function require_superadmin(): array {
+  $u = require_login();
+  if (($u['role'] ?? '') !== 'superadmin') json_out(['ok'=>false,'error'=>'forbidden'], 403);
+  return $u;
+}
+
+/**
+ * Restituisce il gruppo effettivo per l'utente corrente.
+ * - superadmin: usa $_SESSION['active_group'] (impostato da set_active_group.php)
+ * - admin/user: usa il proprio gruppo
+ */
+function get_effective_group(array $me): string {
+  if (($me['role'] ?? '') === 'superadmin') {
+    $g = (string)($_SESSION['active_group'] ?? '');
+    if ($g === '') json_out(['ok'=>false,'error'=>'no_active_group'], 400);
+    return safe_name($g);
+  }
+  $g = (string)($me['group'] ?? '');
+  if ($g === '') json_out(['ok'=>false,'error'=>'missing_group'], 500);
+  return safe_name($g);
 }
 
 function current_group(): string {
   $u = require_login();
-  $g = (string)($u['group'] ?? '');
-  if ($g === '') json_out(['ok'=>false,'error'=>'missing_group'], 500);
-  return safe_name($g);
+  return get_effective_group($u);
 }
 
 function group_saved_dir(): string {
