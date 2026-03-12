@@ -218,7 +218,7 @@
           <button id="btnCloseSidebar" class="relative rounded-2xl border border-white/20 px-3 py-2 hover:bg-white/10 text-white/70 transition-colors shrink-0">✕</button>
         </div>
 
-        <div id="sidebarDrawerInner" class="p-4 space-y-4 overflow-auto flex-1">
+        <div class="p-4 space-y-4 overflow-auto flex-1">
           <div class="flex flex-col gap-2">
             <button id="btnNavPlansMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm">Piani</button>
             <button id="btnNavSettingsMobile" class="rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm transition-colors">Impostazioni</button>

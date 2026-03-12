@@ -574,30 +574,23 @@ async function saveSettings(){
 function setView(view){
   state.view = view;
 
-  // Nasconde tutto, poi mostra solo la view attiva
-  show($("plansView"),    view === "plans");
-  show($("settingsView"), view === "settings");
+  show($("plansView"),      view === "plans");
+  show($("settingsView"),   view === "settings");
   show($("superadminView"), view === "superadmin");
 
-  // Nasconde sidebar/nav se siamo nel pannello superadmin senza gruppo attivo
-  const hideSidebar = view === "superadmin";
-  show($("mainSidebar"),      !hideSidebar);
-  show($("sidebarDrawerInner"), !hideSidebar);
+  // La sidebar è sempre visibile; aggiorna solo lo stile attivo dei bottoni nav
+  const CLS_ACTIVE   = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90";
+  const CLS_INACTIVE = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors";
 
-  const setBtn = (idPlans, idSet)=>{
-    const bp = $(idPlans), bs = $(idSet);
-    if(!bp || !bs) return;
-    if(view === "plans"){
-      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90";
-      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors";
-    } else {
-      bs.className = "rounded-2xl px-3 py-2.5 border border-line bg-ink text-white font-semibold text-sm text-left transition-opacity hover:opacity-90";
-      bp.className = "rounded-2xl px-3 py-2.5 border border-line bg-white hover:bg-surface text-ink text-sm text-left transition-colors";
-    }
+  const setBtn = (idPlans, idSet, idSup)=>{
+    const bp = $(idPlans), bs = $(idSet), bsa = $(idSup);
+    if(bp)  bp.className  = (view === "plans")      ? CLS_ACTIVE : CLS_INACTIVE;
+    if(bs)  bs.className  = (view === "settings")   ? CLS_ACTIVE : CLS_INACTIVE;
+    if(bsa) bsa.className = (view === "superadmin") ? CLS_ACTIVE : CLS_INACTIVE;
   };
 
-  setBtn("btnNavPlans","btnNavSettings");
-  setBtn("btnNavPlansMobile","btnNavSettingsMobile");
+  setBtn("btnNavPlans","btnNavSettings","btnNavSuperadmin");
+  setBtn("btnNavPlansMobile","btnNavSettingsMobile","btnNavSuperadminMobile");
 
   if(view === "settings") renderSettings();
 }
@@ -1797,10 +1790,20 @@ async function boot(){
   show($("appSection"), !!me);
   if(!me) return;
 
-  // Superadmin senza gruppo attivo → mostra solo il pannello di sistema
+  // Superadmin senza gruppo attivo → mostra il pannello di sistema
   if(me.role === "superadmin" && !me.active_group){
     updateWhoami(me, null);
     show($("groupSwitcherBanner"), false);
+    // Mostra il pulsante Pannello Sistema nella sidebar anche senza gruppo attivo
+    show($("btnNavSuperadmin"),       true);
+    show($("btnNavSuperadminMobile"), true);
+    // Nasconde i pulsanti di navigazione gruppo (non applicabili senza gruppo attivo)
+    show($("adminControls"),      false);
+    show($("expiryBanner"),       false);
+    show($("csvSettingsSection"), false);
+    show($("csvViewSection"),     false);
+    show($("logSection"),         false);
+    show($("backupSection"),      false);
     setView("superadmin");
     await renderSuperadminDashboard();
     return;
