@@ -1893,7 +1893,9 @@ async function bootNormal(me){
     loading(false);
   }
 
-  setView(state.view || "plans");
+  // Se si arriva da "superadmin" (selezione gruppo), torna sempre ai piani
+  const nextView = (state.view === "superadmin") ? "plans" : (state.view || "plans");
+  setView(nextView);
   renderSettings();
   renderPlan();
   checkPlanExpiry();
