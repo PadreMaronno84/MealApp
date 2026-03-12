@@ -145,14 +145,9 @@
             <!-- Password -->
             <div>
               <label class="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Password</label>
-              <div class="relative">
-                <input id="regPassword" type="password"
-                  class="w-full rounded-2xl border border-line px-4 py-3 outline-none focus:ring-2 focus:ring-accent/40 bg-surface/50 text-ink placeholder:text-muted text-sm pr-12"
-                  placeholder="Minimo 8 caratteri" autocomplete="new-password"/>
-                <button type="button" id="btnToggleRegPass"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink text-xs px-1 py-1 transition-colors"
-                  title="Mostra/nascondi password">👁</button>
-              </div>
+              <input id="regPassword" type="password"
+                class="w-full rounded-2xl border border-line px-4 py-3 outline-none focus:ring-2 focus:ring-accent/40 bg-surface/50 text-ink placeholder:text-muted text-sm"
+                placeholder="Minimo 8 caratteri" autocomplete="new-password"/>
               <div class="text-[11px] text-muted mt-1.5">Almeno 8 caratteri · usa lettere maiuscole, numeri e simboli per maggiore sicurezza</div>
             </div>
 

@@ -284,6 +284,35 @@ function isAdminOrAbove(){ return state.me?.role === "admin" || state.me?.role =
 function isSuperAdmin(){ return state.me?.role === "superadmin"; }
 
 /* =========================
+   PASSWORD TOGGLE (occhio)
+   ========================= */
+function initPasswordToggles(){
+  document.querySelectorAll('input[type="password"]').forEach(inp => {
+    // Wrappa l'input in un div relativo
+    const wrap = document.createElement('div');
+    wrap.className = 'relative';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+
+    // Spazio a destra per il bottone
+    inp.classList.add('pr-12');
+
+    // Crea il bottone occhio
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors px-1 py-1 text-base leading-none select-none';
+    btn.title = 'Mostra/nascondi password';
+    btn.textContent = '👁';
+    btn.addEventListener('click', () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+/* =========================
    AUTH
    ========================= */
 async function refreshMe(){
@@ -2023,12 +2052,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   $("btnTabLogin")?.addEventListener("click",    ()=>setLoginTab("login"));
   $("btnTabRegister")?.addEventListener("click", ()=>setLoginTab("register"));
 
-  // Toggle visibilità password nella registrazione
-  $("btnToggleRegPass")?.addEventListener("click", ()=>{
-    const inp = $("regPassword");
-    if(!inp) return;
-    inp.type = inp.type === "password" ? "text" : "password";
-  });
+  // Toggle occhio su tutti i campi password
+  initPasswordToggles();
 
   // Uppercase automatico sul codice invito
   $("regInviteCode")?.addEventListener("input", (e)=>{
