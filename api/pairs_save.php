@@ -1,4 +1,6 @@
 <?php
+// pairs_save.php — salva le coppie pranzo+cena modificate nel CSV del gruppo
+// Solo admin. Riceve array JSON {lunch, dinner, season} e riscrive day_pairs.csv
 require __DIR__ . '/common.php';
 $me = require_admin();
 verify_csrf();

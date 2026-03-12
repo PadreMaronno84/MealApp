@@ -1,4 +1,6 @@
 <?php
+// stats.php — conta le occorrenze di ogni coppia pranzo+cena in tutti i piani del gruppo
+// Accessibile a tutti gli utenti loggati. Rispetta eventuale stats_reset_at nelle impostazioni.
 require __DIR__ . '/common.php';
 $me = require_login();
 

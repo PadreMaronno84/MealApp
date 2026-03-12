@@ -1,4 +1,6 @@
 <?php
+// stats_reset.php — azzera le statistiche impostando stats_reset_at alla data corrente
+// Solo admin. I piani precedenti al reset vengono ignorati da stats.php.
 require __DIR__ . '/common.php';
 $me = require_admin();
 verify_csrf();

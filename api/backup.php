@@ -1,4 +1,6 @@
 <?php
+// backup.php — esporta tutti i dati del gruppo (piani, piano alimentare, impostazioni)
+// Solo admin. Restituisce un file JSON da scaricare.
 require __DIR__ . '/common.php';
 $me = require_admin();
 

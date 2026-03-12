@@ -1,4 +1,6 @@
 <?php
+// restore.php — ripristina un backup JSON del gruppo
+// Solo admin. Merge piani (non sovrascrive ID esistenti), sovrascrive CSV e impostazioni (preserva invite_code).
 require __DIR__ . '/common.php';
 $me = require_admin();
 verify_csrf();

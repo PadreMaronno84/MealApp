@@ -1,4 +1,6 @@
 <?php
+// change_password.php — cambia la password dell'utente loggato
+// Richiede: current_password, new_password (min 8 caratteri). POST + CSRF.
 require __DIR__ . '/common.php';
 $me = require_login();
 verify_csrf();

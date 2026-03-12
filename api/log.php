@@ -1,4 +1,6 @@
 <?php
+// log.php — restituisce gli ultimi 100 eventi di attività del gruppo (in ordine inverso)
+// Solo admin. Legge storage/logs/{group}.jsonl
 require __DIR__ . '/common.php';
 $me = require_admin();
 
