@@ -1952,16 +1952,15 @@ async function selectGroup(groupName){
   // Reset completo di tutto lo stato del gruppo precedente
   state.plan = null; state.saved = []; state.pool = []; state.settings = null; state.dirty = false;
 
-  // Chiudi e svuota tutti gli accordion con dati lazy-loaded (log, stats, utenti)
-  // così al prossimo open ricaricano i dati del nuovo gruppo
-  const resetAccordion = (bodyId, iconId) => {
+  // Chiudi gli accordion lazy-loaded (log, stats) così al prossimo open
+  // ricaricano i dati del nuovo gruppo. NON cancellare innerHTML: contiene HTML statico.
+  const closeAccordion = (bodyId, iconId) => {
     const body = $(bodyId), icon = $(iconId);
-    if(body){ body.classList.add("hidden"); body.innerHTML = ""; }
+    if(body) body.classList.add("hidden");
     if(icon) icon.classList.remove("rotate-180");
   };
-  resetAccordion("statsBody",  "statsIcon");
-  resetAccordion("logBody",    "logIcon");
-  resetAccordion("adminUsers", "usersAccordionIcon");
+  closeAccordion("statsBody", "statsIcon");
+  closeAccordion("logBody",   "logIcon");
 
   await boot();
 }
